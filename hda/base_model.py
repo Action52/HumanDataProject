@@ -1,9 +1,11 @@
+import pickle
+
 import tensorflow as tf
-import wandb
-from wandb.keras import WandbCallback
 from tensorflow.keras.datasets import mnist
 from tensorflow.keras.utils import to_categorical
-import pickle
+from wandb.keras import WandbCallback
+
+import wandb
 
 
 class WandbManager:
@@ -31,7 +33,13 @@ class WandbManager:
             self.config.update(config_updates)
 
         # Initialize the wandb run
-        wandb.init(project=self.project_name, entity=self.entity, config=self.config, name=experiment_name, reinit=True)
+        wandb.init(
+            project=self.project_name,
+            entity=self.entity,
+            config=self.config,
+            name=experiment_name,
+            reinit=True,
+        )
 
     def log_metrics(self, metrics):
         """
@@ -79,13 +87,13 @@ class WandbKerasModel(WandbManager):
 
     def compile_and_fit(self, compile_args=None, fit_args=None):
         # Start the wandb experiment
-        experiment_name = fit_args.pop('experiment_name', 'Unnamed Experiment')
+        experiment_name = fit_args.pop("experiment_name", "Unnamed Experiment")
         self.start_experiment(experiment_name=experiment_name)
 
         # Prepare callbacks for fitting, including WandbCallback
-        callbacks = fit_args.get('callbacks', [])
+        callbacks = fit_args.get("callbacks", [])
         callbacks.append(WandbCallback())
-        fit_args['callbacks'] = callbacks
+        fit_args["callbacks"] = callbacks
 
         # Compile the model
         self.model.compile(**(compile_args or {}))
@@ -106,8 +114,7 @@ class WandbKerasModel(WandbManager):
 
         return history
 
-    def load_model_from_artifact(self, artifact_name, custom_objects=None,
-                                 run_id=None):
+    def load_model_from_artifact(self, artifact_name, custom_objects=None, run_id=None):
         """
         Load a model along with its parameters from a previous run artifact.
         Initializes a wandb run if there's none active.
@@ -119,18 +126,25 @@ class WandbKerasModel(WandbManager):
         # Check if there's an active run, if not, initialize wandb
         if wandb.run is None:
             if run_id:
-                wandb.init(project=self.project_name, entity=self.entity,
-                           config=self.config, id=run_id, resume="allow")
+                wandb.init(
+                    project=self.project_name,
+                    entity=self.entity,
+                    config=self.config,
+                    id=run_id,
+                    resume="allow",
+                )
             else:
-                wandb.init(project=self.project_name, entity=self.entity,
-                           config=self.config)
+                wandb.init(
+                    project=self.project_name, entity=self.entity, config=self.config
+                )
 
-        artifact = wandb.use_artifact(artifact_name, type='model')
+        artifact = wandb.use_artifact(artifact_name, type="model")
         artifact_dir = artifact.download()
 
         # Load the model
-        self.model = tf.keras.models.load_model(artifact_dir,
-                                                custom_objects=custom_objects)
+        self.model = tf.keras.models.load_model(
+            artifact_dir, custom_objects=custom_objects
+        )
 
     def save(self, artifact_name):
         """
@@ -181,12 +195,14 @@ class WandbKerasModel(WandbManager):
         # Check if the model is set, if not, raise an AttributeError
         if self.model is None:
             raise AttributeError(
-                f"'{self.__class__.__name__}' object has no attribute 'model' or the model is not set")
+                f"'{self.__class__.__name__}' object has no attribute 'model' or the model is not set"
+            )
 
         # Check if the model has the attribute, if not, raise an AttributeError
         if not hasattr(self.model, name):
             raise AttributeError(
-                f"'{self.__class__.__name__}' object and its 'model' do not have the attribute '{name}'")
+                f"'{self.__class__.__name__}' object and its 'model' do not have the attribute '{name}'"
+            )
 
         # Return the attribute from the model
         return getattr(self.model, name)
@@ -196,35 +212,38 @@ if __name__ == "__main__":
     # Load and preprocess the data
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
     x_train, x_test = x_train / 255.0, x_test / 255.0  # Normalize data
-    y_train, y_test = to_categorical(y_train, 10), to_categorical(y_test, 10)  # One-hot encoding
+    y_train, y_test = to_categorical(y_train, 10), to_categorical(
+        y_test, 10
+    )  # One-hot encoding
 
     # Define a simple Keras model
-    model = tf.keras.models.Sequential([
-        tf.keras.layers.Flatten(input_shape=(28, 28)),
-        tf.keras.layers.Dense(128, activation='relu'),
-        tf.keras.layers.Dropout(0.7),
-        tf.keras.layers.Dense(10, activation='softmax')
-    ])
+    model = tf.keras.models.Sequential(
+        [
+            tf.keras.layers.Flatten(input_shape=(28, 28)),
+            tf.keras.layers.Dense(128, activation="relu"),
+            tf.keras.layers.Dropout(0.7),
+            tf.keras.layers.Dense(10, activation="softmax"),
+        ]
+    )
 
     # Wrap the model with WandbKerasModel
-    wandb_model = WandbKerasModel(model=model,
-                                  project_name='mnist_project',
-                                  config={'learning_rate': 0.001},
-                                  entity="leonvillapun")
+    wandb_model = WandbKerasModel(
+        model=model, project_name="mnist_project", config={}, entity="leonvillapun"
+    )
 
     # Compile and fit the model
     wandb_model.compile_and_fit(
         compile_args={
-            'optimizer': 'adam',
-            'loss': 'categorical_crossentropy',
-            'metrics': ['accuracy']
+            "optimizer": "adam",
+            "loss": "categorical_crossentropy",
+            "metrics": ["accuracy"],
         },
         fit_args={
-            'x': x_train,
-            'y': y_train,
-            'epochs': 3,
-            'batch_size': 32,
-            'validation_data': (x_test, y_test),
-            'experiment_name': 'mnist_simple_nn_3epochs'
-        }
+            "x": x_train,
+            "y": y_train,
+            "epochs": 3,
+            "batch_size": 32,
+            "validation_data": (x_test, y_test),
+            "experiment_name": "mnist_simple_nn_3epochs",
+        },
     )
