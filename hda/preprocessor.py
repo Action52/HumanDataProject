@@ -78,7 +78,12 @@ class Preprocessor:
             data_by_filename[label] = {}
             # Store data in the dictionary
             normalized_data = self.normalize_data(data[0][0])
-            smoothened_data = self.smooth_eeg_data(normalized_data)
+            
+            smoothened_data = []
+            smoothened_data.append(self.smooth_eeg_data(normalized_data, 200))
+            smoothened_data.append(self.smooth_eeg_data(normalized_data, 100))
+            smoothened_data.append(self.smooth_eeg_data(normalized_data, 20))
+            
             data_by_filename[label]['normalized'] = normalized_data
             data_by_filename[label]['smoothened'] = smoothened_data
 
@@ -93,11 +98,9 @@ class Preprocessor:
             # Get the label for the data
             marker = [el[0] for el in info_by_filename[key]['marker'][0][0]]
 
-            segments_by_labels = {}
+            segments_by_labels = []
             start = 0
             end = 0
-
-            length_arr = []
 
             '''
                 Given an array of labels, i.e = [0,0,0,0,0,1,1,1,1,2,2,2]
@@ -116,16 +119,12 @@ class Preprocessor:
                 start = max(start, 0)
                 end = min(end+1, len(marker))
 
-                segments_by_labels.setdefault(marker[i], [])
-                segments_by_labels[marker[i]].append((start, end))
-
-                if marker[i] > 90:
-                    length_arr.append(end-start)
+                segments_by_labels.append([(start, end), marker[i]])
 
                 start = i+1
                 end = start
 
-            result[key] = segments_by_labels
+            result[key] = np.array(segments_by_labels, dtype=object)
 
         return result
 
@@ -200,26 +199,25 @@ def main():
 
     labels = info_by_filename['HaLT-SubjectJ-161121-6St-LRHandLegTongue']['marker'][0][0]
     eeg_data = data_by_filename['HaLT-SubjectJ-161121-6St-LRHandLegTongue']['smoothened']
+    
+    # print(eeg_data[353:35514, :])
 
-    print(segments_by_labels['HaLT-SubjectJ-161121-6St-LRHandLegTongue'][1][:10])
-    print(eeg_data[353:35514, :])
+    # #segments_label_1 = preprocessor.segment_ts(eeg_data, segments_by_labels['HaLT-SubjectJ-161121-6St-LRHandLegTongue'][1], 1)
+    # #print(segments_label_1)
 
-    #segments_label_1 = preprocessor.segment_ts(eeg_data, segments_by_labels['HaLT-SubjectJ-161121-6St-LRHandLegTongue'][1], 1)
-    #print(segments_label_1)
+    # #downsampled = preprocessor.downsample_data(segments_label_1[0][0], 2)
+    # #print(segments_label_1[0][0].shape)
+    # #print(downsampled.shape)
 
-    #downsampled = preprocessor.downsample_data(segments_label_1[0][0], 2)
-    #print(segments_label_1[0][0].shape)
-    #print(downsampled.shape)
+    # flattened_segments = preprocessor.preprocess_file(
+    #     data_by_filename,
+    #     info_by_filename,
+    #     'HaLT-SubjectJ-161121-6St-LRHandLegTongue',
+    #     downsamples=(2,4))
 
-    flattened_segments = preprocessor.preprocess_file(
-        data_by_filename,
-        info_by_filename,
-        'HaLT-SubjectJ-161121-6St-LRHandLegTongue',
-        downsamples=(2,4))
-
-    print(len(flattened_segments))
-    print(len(flattened_segments[0]))
-    print(len(flattened_segments[0][0]))
+    # print(len(flattened_segments))
+    # print(len(flattened_segments[0]))
+    # print(len(flattened_segments[0][0]))
 
 
 
