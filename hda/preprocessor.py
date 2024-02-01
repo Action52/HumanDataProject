@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import tensorflow as tf
+from itertools import islice
+
 
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.models import Sequential
@@ -131,7 +133,7 @@ class Preprocessor:
         pass
 
     def segment_ts(self, eeg_data_norm, eeg_data_smooths: list, segment_start, segment_end, label,
-                   downsamples=(2,4)):
+                   downsamples):
         # eeg data norm, eeg data smooth, segments=(start, end), label=1 (key from dict)
         # output: ([segmented_eeg_norm, segmente_eeg_smooth, segmented_eeg_downsampled], label)
         segment_norm = [eeg_data_norm[segment_start:segment_end, :]]
@@ -162,7 +164,7 @@ class Preprocessor:
 
         return padded_matrix
 
-    def preprocess_file(self, data_by_filename, info_by_filename, filename):
+    def preprocess_file(self, data_by_filename, info_by_filename, filename, downsamples):
         index_segments_by_labels = self.create_segments_by_labels(info_by_filename)
         eeg_data_norm = data_by_filename[filename]['normalized']
         eeg_data_smooths = data_by_filename[filename]['smoothened']
@@ -176,10 +178,20 @@ class Preprocessor:
                 eeg_data_smooths,
                 start_index,
                 end_index,
-                label
+                label,
+                downsamples
             )
             yield segments_label
 
+    def batch_file(self, filename, data_by_filename, info_by_filename, batch_size=100, downsamples=(2, 4)):
+        generator = self.preprocess_file(data_by_filename, info_by_filename,
+                                         filename, downsamples)
+
+        while True:
+            batch = list(islice(generator, batch_size))
+            if not batch:
+                break
+            yield batch
 
 def main():
     preprocessor = Preprocessor('datasets/')
@@ -199,7 +211,12 @@ def main():
     #print(segments_label_1[0][0].shape)
     #print(downsampled.shape)
 
-    flattened_segments = preprocessor.preprocess_file(data_by_filename, info_by_filename, 'HaLT-SubjectJ-161121-6St-LRHandLegTongue')
+    flattened_segments = preprocessor.preprocess_file(
+        data_by_filename,
+        info_by_filename,
+        'HaLT-SubjectJ-161121-6St-LRHandLegTongue',
+        downsamples=(2,4))
+
     print(len(flattened_segments))
     print(len(flattened_segments[0]))
     print(len(flattened_segments[0][0]))
