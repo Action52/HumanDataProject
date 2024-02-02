@@ -192,38 +192,38 @@ class Preprocessor:
                 break
             yield batch
 
-    def load_and_preprocess_data(self, data_by_filename, info_by_filename, filenames):
+    def load_and_preprocess_segment_index(self,info_by_filename):
         index_segments_by_labels = self.create_segments_by_labels(info_by_filename)
 
         all_segments = []
         all_labels = []
+        all_filenames = []
 
-        for filename in filenames:
-            data = data_by_filename[filename]
-            index_label_pairs = info_by_filename[
-                filename]  # [(start_index, end_index), label] pairs
-
-            for (start_index, end_index), label in index_label_pairs:
-                segment = data[
-                          start_index:end_index]  # Assuming data is a NumPy array or similar
-                all_segments.append(segment)
+        for filename, segments in index_segments_by_labels.items():
+            for (start_index, end_index), label in segments:
+                all_segments.append((start_index, end_index))
                 all_labels.append(label)
+                all_filenames.append(filename)
 
-        return all_segments, all_labels
 
-    def create_dataset(self, segments, labels):
+        return self.create_dataset(all_filenames, all_segments, all_labels)
+
+    def create_dataset(self, filenames, segments, labels):
         # Assuming segments is a list of NumPy arrays and labels is a list of labels
-        dataset = tf.data.Dataset.from_tensor_slices((segments, labels))
+        dataset = tf.data.Dataset.from_tensor_slices((filenames, segments, labels))
         return dataset
 
 
 def main():
     preprocessor = Preprocessor('datasets/')
     data_by_filename, info_by_filename = preprocessor.read_as_dictionary()
-    segments_by_labels = preprocessor.create_segments_by_labels(info_by_filename)
-
-    labels = info_by_filename['HaLT-SubjectJ-161121-6St-LRHandLegTongue']['marker'][0][0]
-    eeg_data = data_by_filename['HaLT-SubjectJ-161121-6St-LRHandLegTongue']['smoothened']
+    segment_indexes = preprocessor.load_and_preprocess_segment_index(info_by_filename)
+    
+    # for filename, segment, label in segment_indexes:
+    #     print('Features:', segment.numpy(), 'Labels:', label.numpy(), 'Filenames:', filename.numpy())
+    #     break
+    # labels = info_by_filename['HaLT-SubjectJ-161121-6St-LRHandLegTongue']['marker'][0][0]
+    # eeg_data = data_by_filename['HaLT-SubjectJ-161121-6St-LRHandLegTongue']['smoothened']
     
     # print(eeg_data[353:35514, :])
 
