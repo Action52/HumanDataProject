@@ -1,9 +1,10 @@
 import os
-import scipy.io
+
 import numpy as np
+import scipy.io
 import tensorflow as tf
-from tqdm import tqdm
 import yaml
+from tqdm import tqdm
 
 
 class Preprocessor:
@@ -17,9 +18,9 @@ class Preprocessor:
         Args:
             config_path (str): The file path to the YAML configuration file.
         """
-        with open(config_path, 'r') as config_file:
+        with open(config_path, "r") as config_file:
             self.config = yaml.safe_load(config_file)
-            self.config = self.config['preprocess']
+            self.config = self.config["preprocess"]
 
     def get_file_names(self):
         """
@@ -31,8 +32,11 @@ class Preprocessor:
         Returns:
             list: A list of matching .mat file names.
         """
-        return [file for file in os.listdir(self.config['data_directory']) if
-                file.endswith('.mat') and "HaLT" in file]
+        return [
+            file
+            for file in os.listdir(self.config["data_directory"])
+            if file.endswith(".mat") and "HaLT" in file
+        ]
 
     def _smooth_eeg_data(self, eeg_data, window_size=200):
         """
@@ -52,12 +56,15 @@ class Preprocessor:
         smoothed_eeg_data = np.empty_like(eeg_data)
 
         for i in tqdm(range(eeg_data.shape[1]), desc="smoothen eeg"):
-            padded_channel = np.pad(eeg_data[:, i], pad_size, mode='edge')
-            smoothed_channel = np.convolve(padded_channel,
-                                           np.ones(window_size) / window_size,
-                                           mode='same')
-            smoothed_eeg_data[:, i] = smoothed_channel[
-                                      pad_size:-pad_size] if pad_size > 0 else smoothed_channel
+            padded_channel = np.pad(eeg_data[:, i], pad_size, mode="edge")
+            smoothed_channel = np.convolve(
+                padded_channel, np.ones(window_size) / window_size, mode="same"
+            )
+            smoothed_eeg_data[:, i] = (
+                smoothed_channel[pad_size:-pad_size]
+                if pad_size > 0
+                else smoothed_channel
+            )
 
         return smoothed_eeg_data
 
@@ -76,9 +83,10 @@ class Preprocessor:
         Returns:
             np.ndarray: The normalized EEG data, maintaining the original shape of the input.
         """
-        norm_factor = np.percentile(data, 99, axis=0) - np.percentile(data, 5,
-                                                                      axis=0)
-        return (data / norm_factor)
+        norm_factor = np.percentile(data, 99, axis=0) - np.percentile(
+            data, 5, axis=0
+        )
+        return data / norm_factor
 
     def _downsample_data(self, segment, k):
         """
@@ -98,7 +106,12 @@ class Preprocessor:
         k = max(1, k)
         downsampled_matrix = segment[::k, :]
         num_rows_to_pad = segment.shape[0] - downsampled_matrix.shape[0]
-        padded_matrix = np.pad(downsampled_matrix, ((0, num_rows_to_pad), (0, 0)), mode='constant', constant_values=0)
+        padded_matrix = np.pad(
+            downsampled_matrix,
+            ((0, num_rows_to_pad), (0, 0)),
+            mode="constant",
+            constant_values=0,
+        )
         return padded_matrix
 
     def _create_segment_indexes_from_dataset(self, information):
@@ -118,11 +131,11 @@ class Preprocessor:
                   that the first segment from index 0 to 5 is associated with `label1`, and the second segment from index
                   6 to 10 is associated with `label2`.
         """
-        marker = [el[0] for el in information['marker'][0][0]]
+        marker = [el[0] for el in information["marker"][0][0]]
         segments_by_labels = []
         start = end = 0
 
-        for i in tqdm(range(len(marker)), desc='process the marker'):
+        for i in tqdm(range(len(marker)), desc="process the marker"):
             if i < len(marker) - 1 and marker[i] == marker[i + 1]:
                 end += 1
                 continue
@@ -136,8 +149,14 @@ class Preprocessor:
 
         return segments_by_labels
 
-    def _segment_ts(self, eeg_data_norm, eeg_data_smooths, label,
-                    segment_indexes, downsamples):
+    def _segment_ts(
+        self,
+        eeg_data_norm,
+        eeg_data_smooths,
+        label,
+        segment_indexes,
+        downsamples,
+    ):
         """
         Segments the time series EEG data, applies smoothing and downsampling, and pads each segment to a uniform length.
 
@@ -159,25 +178,34 @@ class Preprocessor:
         segment_start, segment_end = segment_indexes
 
         segment_norm = eeg_data_norm[segment_start:segment_end, :]
-        segment_smooth = [eeg_data_smooth[segment_start:segment_end, :] for
-                          eeg_data_smooth in eeg_data_smooths]
-        segment_downsamples = [self._downsample_data(segment_norm, k) for k in
-                               downsamples]
+        segment_smooth = [
+            eeg_data_smooth[segment_start:segment_end, :]
+            for eeg_data_smooth in eeg_data_smooths
+        ]
+        segment_downsamples = [
+            self._downsample_data(segment_norm, k) for k in downsamples
+        ]
 
-        max_length = self.config['max_length_ts']
+        max_length = self.config["max_length_ts"]
 
-        segment_norm_padded = \
-        self._pad_sequences([segment_norm], maxlen=max_length, value=0.0)[0]
+        segment_norm_padded = self._pad_sequences(
+            [segment_norm], maxlen=max_length, value=0.0
+        )[0]
         segment_smooth_padded = [
-            self._pad_sequences([segment], maxlen=max_length, value=0.0)[0] for
-            segment in segment_smooth]
+            self._pad_sequences([segment], maxlen=max_length, value=0.0)[0]
+            for segment in segment_smooth
+        ]
         segment_downsamples_padded = [
-            self._pad_sequences([segment], maxlen=max_length, value=0.0)[0] for
-            segment in segment_downsamples]
+            self._pad_sequences([segment], maxlen=max_length, value=0.0)[0]
+            for segment in segment_downsamples
+        ]
 
-        output = ([
-                      segment_norm_padded] + segment_smooth_padded + segment_downsamples_padded,
-                  label)
+        output = (
+            [segment_norm_padded]
+            + segment_smooth_padded
+            + segment_downsamples_padded,
+            label,
+        )
 
         return output
 
@@ -197,9 +225,9 @@ class Preprocessor:
         """
         info = {}
 
-        for name in mat_data['o'].dtype.names:
-            if name != 'data':
-                info[name] = mat_data['o'][name]
+        for name in mat_data["o"].dtype.names:
+            if name != "data":
+                info[name] = mat_data["o"][name]
 
         return info
 
@@ -219,17 +247,17 @@ class Preprocessor:
         Returns:
             tuple: A tuple containing the original (and possibly normalized) data and a list of its smoothed versions.
         """
-        data = mat_data['o']['data'][0][0]
+        data = mat_data["o"]["data"][0][0]
         smoothened_data = []
 
         if is_normalized:
             data = self._normalize_data(data)
-        
+
         for window in smoothing_windows:
-            smoothened_data.append(self._smooth_eeg_data(data, window))    
+            smoothened_data.append(self._smooth_eeg_data(data, window))
 
         return data, smoothened_data
-    
+
     def _preload_raw_dataset(self, filename):
         """
         Preloads the dataset from a specified .mat file.
@@ -243,9 +271,9 @@ class Preprocessor:
         Returns:
             dict: The data structure loaded from the .mat file, typically containing both the raw data and its associated metadata.
         """
-        file_path = os.path.join(self.config['data_directory'], filename)
+        file_path = os.path.join(self.config["data_directory"], filename)
         mat_data = scipy.io.loadmat(file_path)
-        
+
         return mat_data
 
     def load_and_preprocess(self, filename):
@@ -266,35 +294,48 @@ class Preprocessor:
                   The shape and content of each data segment depend on the preprocessing operations applied.
         """
         if isinstance(filename, bytes):
-            filename = filename.decode('utf-8')
+            filename = filename.decode("utf-8")
 
         mat_data = self._preload_raw_dataset(filename)
 
         dataset_information = self._get_data_information(mat_data)
         segment_informations = self._create_segment_indexes_from_dataset(
-            dataset_information)
+            dataset_information
+        )
 
         normalized_data, smoothed_data = self._load_dataset(
             mat_data,
-            self.config['is_normalized'],
-            self.config['smoothing_windows']
+            self.config["is_normalized"],
+            self.config["smoothing_windows"],
         )
 
         all_segments = []
 
         for segment_indexes, label in segment_informations:
-            if label in self.config['drop_labels']:
+            if label in self.config["drop_labels"]:
                 continue
 
-            segment, _ = self._segment_ts(normalized_data, smoothed_data, label,
-                                          segment_indexes, self.config['downsamples'])
+            segment, _ = self._segment_ts(
+                normalized_data,
+                smoothed_data,
+                label,
+                segment_indexes,
+                self.config["downsamples"],
+            )
             stacked_segment = np.stack(segment, axis=0)  # Shape: (6, 200, 22)
             all_segments.append((stacked_segment, label))
 
         return all_segments
 
-    def _pad_sequences(self, sequences, maxlen=None, dtype='float32',
-                      padding='post', truncating='post', value=0.0):
+    def _pad_sequences(
+        self,
+        sequences,
+        maxlen=None,
+        dtype="float32",
+        padding="post",
+        truncating="post",
+        value=0.0,
+    ):
         """
         Pads 2D sequences to the same length.
 
@@ -313,13 +354,15 @@ class Preprocessor:
             maxlen = max(seq.shape[0] for seq in sequences)
 
         num_features = sequences[0].shape[
-            1]  # Assuming all sequences have the same number of features
-        padded_sequences = np.full((len(sequences), maxlen, num_features),
-                                   value, dtype=dtype)
+            1
+        ]  # Assuming all sequences have the same number of features
+        padded_sequences = np.full(
+            (len(sequences), maxlen, num_features), value, dtype=dtype
+        )
 
         for i, seq in enumerate(sequences):
             if seq.shape[0] > maxlen:  # Truncate
-                if truncating == 'pre':
+                if truncating == "pre":
                     trunc = seq[-maxlen:]
                 else:
                     trunc = seq[:maxlen]
@@ -327,10 +370,10 @@ class Preprocessor:
                 trunc = seq
 
             # Pad
-            if padding == 'post':
-                padded_sequences[i, :trunc.shape[0], :] = trunc
+            if padding == "post":
+                padded_sequences[i, : trunc.shape[0], :] = trunc
             else:
-                padded_sequences[i, -trunc.shape[0]:, :] = trunc
+                padded_sequences[i, -trunc.shape[0] :, :] = trunc
 
         return padded_sequences
 
@@ -355,7 +398,7 @@ class Preprocessor:
         filenames = self.get_file_names()
 
         def preprocess_func(file_name):
-            file_name_str = file_name.numpy().decode('utf-8')
+            file_name_str = file_name.numpy().decode("utf-8")
             # Process and ensure uniform shapes for all segments
             segments, labels = zip(*self.load_and_preprocess(file_name_str))
             # Convert segments and labels to tensors
@@ -365,41 +408,40 @@ class Preprocessor:
 
         def wrapped_preprocess_func(file_name):
             segments_tensor, labels_tensor = tf.py_function(
-                preprocess_func,
-                inp=[file_name],
-                Tout=[tf.float32, tf.int32]
+                preprocess_func, inp=[file_name], Tout=[tf.float32, tf.int32]
             )
             return tf.data.Dataset.from_tensor_slices(
-                (segments_tensor, labels_tensor))
+                (segments_tensor, labels_tensor)
+            )
 
         dataset = tf.data.Dataset.from_tensor_slices(filenames)
         dataset = dataset.interleave(
             wrapped_preprocess_func,
             cycle_length=tf.data.AUTOTUNE,
             block_length=1,
-            num_parallel_calls=tf.data.AUTOTUNE
+            num_parallel_calls=tf.data.AUTOTUNE,
         )
 
-        if self.config['cache_file']:
+        if self.config["cache_file"]:
             dataset = dataset.cache()
 
-        if self.config['shuffle']:
-            dataset = dataset.shuffle(self.config['batch_size'])
+        if self.config["shuffle"]:
+            dataset = dataset.shuffle(self.config["batch_size"])
 
         dataset = dataset.repeat()
-        dataset = dataset.batch(self.config['batch_size'])
-        dataset = dataset.prefetch(self.config['batch_size'])
+        dataset = dataset.batch(self.config["batch_size"])
+        dataset = dataset.prefetch(self.config["batch_size"])
 
         return dataset
 
 
 def main():
     # Test code
-    preprocessor = Preprocessor('config.yaml')
+    preprocessor = Preprocessor("config.yaml")
     dataset = preprocessor.run()
 
     for data, label in dataset.take(5).as_numpy_iterator():
-        print(f'Shape: {data.shape}, Label: {label}')
+        print(f"Shape: {data.shape}, Label: {label}")
 
 
 if __name__ == "__main__":
