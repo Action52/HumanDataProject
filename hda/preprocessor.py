@@ -192,6 +192,26 @@ class Preprocessor:
                 break
             yield batch
 
+    def load_and_preprocess_data(self, data_by_filename, info_by_filename, filenames):
+        index_segments_by_labels = self.create_segments_by_labels(info_by_filename)
+
+        all_segments = []
+        all_labels = []
+
+        for filename in filenames:
+            data = data_by_filename[filename]
+            index_label_pairs = info_by_filename[
+                filename]  # [(start_index, end_index), label] pairs
+
+            for (start_index, end_index), label in index_label_pairs:
+                segment = data[
+                          start_index:end_index]  # Assuming data is a NumPy array or similar
+                all_segments.append(segment)
+                all_labels.append(label)
+
+        return all_segments, all_labels
+
+
 def main():
     preprocessor = Preprocessor('datasets/')
     data_by_filename, info_by_filename = preprocessor.read_as_dictionary()
