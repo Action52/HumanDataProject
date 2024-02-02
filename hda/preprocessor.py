@@ -211,6 +211,11 @@ class Preprocessor:
 
         return all_segments, all_labels
 
+    def create_dataset(self, segments, labels):
+        # Assuming segments is a list of NumPy arrays and labels is a list of labels
+        dataset = tf.data.Dataset.from_tensor_slices((segments, labels))
+        return dataset
+
 
 def main():
     preprocessor = Preprocessor('datasets/')
