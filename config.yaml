@@ -2,11 +2,11 @@ preprocess:
   data_directory: 'datasets/'
   cache_file: true
   shuffle: true
-  batch_size: 100
+  batch_size: 1
   is_normalized: true
   smoothing_windows:
     - 20
-    - 100
+    - 75
     - 200
   downsamples:
     - 2
@@ -15,4 +15,4 @@ preprocess:
     - 91
     - 92
     - 99
-  max_length_ts: 200
+  max_length_ts: 215

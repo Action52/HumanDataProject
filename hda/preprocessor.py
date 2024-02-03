@@ -6,6 +6,7 @@ import tensorflow as tf
 import yaml
 from tqdm import tqdm
 
+import matplotlib.pyplot as plt
 
 class Preprocessor:
     def __init__(self, config_path):
@@ -38,7 +39,7 @@ class Preprocessor:
             if file.endswith(".mat") and "HaLT" in file
         ]
 
-    def _smooth_eeg_data(self, eeg_data, window_size=200):
+    def _smooth_eeg_data(self, eeg_data, window_size):
         """
         Applies a moving average filter to EEG data for smoothing, using edge padding to handle boundary effects.
 
@@ -47,7 +48,7 @@ class Preprocessor:
 
         Args:
             eeg_data (np.ndarray): The raw EEG data to be smoothed, typically with shape (timepoints, channels).
-            window_size (int, optional): The size of the moving average window. Defaults to 200.
+            window_size (int, optional): The size of the moving average window.
 
         Returns:
             np.ndarray: The smoothed EEG data, maintaining the original shape of the input.
@@ -369,8 +370,7 @@ class Preprocessor:
             else:
                 trunc = seq
 
-            # Pad
-            if padding == "post":
+            if padding == "post":  # Pad
                 padded_sequences[i, : trunc.shape[0], :] = trunc
             else:
                 padded_sequences[i, -trunc.shape[0] :, :] = trunc
@@ -439,9 +439,35 @@ def main():
     # Test code
     preprocessor = Preprocessor("config.yaml")
     dataset = preprocessor.run()
-
-    for data, label in dataset.take(5).as_numpy_iterator():
+    for data, label in dataset.take(20).as_numpy_iterator():
         print(f"Shape: {data.shape}, Label: {label}")
+
+        # Determine the number of time series to plot
+        num_ts = data[0].shape[
+            0]  # Number of time series in the first element of the batch
+
+        # Create a figure and a set of subplots
+        fig, axs = plt.subplots(num_ts, 1, figsize=(16, 8))  # Adjust the figure size as needed
+
+        for i, ts in enumerate(data[0]):
+            print(ts.shape)
+
+            # If there's only one time series, 'axs' won't be an array, so we need to handle that case
+            ax = axs[i] if num_ts > 1 else axs
+
+            ax.plot(ts)
+            ax.set_title(f"Label: {label}")
+            ax.set_xlabel("Time")
+            ax.set_ylabel("Amplitude")
+
+        # Adjust layout to prevent overlap
+        plt.tight_layout()
+
+        # Display the plot
+        plt.show()
+
+        # Clear the current figure before the next batch
+        plt.clf()
 
 
 if __name__ == "__main__":
