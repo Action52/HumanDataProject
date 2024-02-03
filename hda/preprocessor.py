@@ -9,6 +9,8 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 class Preprocessor:
+    BIG_SEGMENTS = 10000 # constant for 0s segments in the beginning
+    
     def __init__(self, config_path):
         """
         Initializes the Preprocessor with configuration parameters specified in a YAML file.
@@ -144,12 +146,36 @@ class Preprocessor:
             if i == len(marker) - 1:
                 end = i
 
-            segments_by_labels.append([(start, end), marker[i]])
+            segment = self.__create_segments(start, end, marker[i], max_length=self.config["max_length_ts"])
+            
+            segments_by_labels.extend(segment)
             start = i + 1
             end = start
 
         return segments_by_labels
-
+    
+    def __create_segments(self, start, end, marker, max_length):
+        """
+            This method to handle consecutives 0s in the beginning of the data,
+            this will break down big 0s segment to several segments. 
+            This will only apply for segments more in the beginning of the data
+        """
+        if end-start < self.BIG_SEGMENTS and marker != 0:
+            return [[(start, end), marker]]
+        
+        new_segments = []
+        new_start = start
+        for i in range(start, end+1):
+            if (i-new_start) == max_length and i < end:
+                new_segments.append([(new_start, i), marker])
+                new_start = i
+            
+            # Append the leftover segments
+            if i == end:
+                 new_segments.append([(new_start, i), marker])
+        
+        return new_segments
+            
     def _segment_ts(
         self,
         eeg_data_norm,
@@ -177,18 +203,14 @@ class Preprocessor:
                    segment arrays, and the second element is the label associated with the segment.
         """
         segment_start, segment_end = segment_indexes
+        max_length = self.config["max_length_ts"]
 
         segment_norm = eeg_data_norm[segment_start:segment_end, :]
         segment_smooth = [
             eeg_data_smooth[segment_start:segment_end, :]
             for eeg_data_smooth in eeg_data_smooths
         ]
-        segment_downsamples = [
-            self._downsample_data(segment_norm, k) for k in downsamples
-        ]
-
-        max_length = self.config["max_length_ts"]
-
+        
         segment_norm_padded = self._pad_sequences(
             [segment_norm], maxlen=max_length, value=0.0
         )[0]
@@ -196,15 +218,15 @@ class Preprocessor:
             self._pad_sequences([segment], maxlen=max_length, value=0.0)[0]
             for segment in segment_smooth
         ]
-        segment_downsamples_padded = [
-            self._pad_sequences([segment], maxlen=max_length, value=0.0)[0]
-            for segment in segment_downsamples
+        
+        segment_downsamples = [
+            self._downsample_data(segment_norm_padded, k) for k in downsamples
         ]
 
         output = (
             [segment_norm_padded]
             + segment_smooth_padded
-            + segment_downsamples_padded,
+            + segment_downsamples,
             label,
         )
 
