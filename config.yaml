@@ -1,8 +1,10 @@
 preprocess:
   data_directory: 'datasets/'
+  test_directory: 'datasets/test/'
+  val_directory: 'datasets/validation'
   cache_file: true
   shuffle: true
-  batch_size: 1
+  batch_size: 20
   is_normalized: true
   smoothing_windows:
     - 20
@@ -16,3 +18,14 @@ preprocess:
     - 92
     - 99
   max_length_ts: 215
+  channels: 22
+
+convolutions_conf:
+  conv1:
+    filters: 4
+    kernel_size: 5
+    activation: 'relu'
+  conv2:
+    filters: 4
+    kernel_size: 5
+    activation: 'relu'

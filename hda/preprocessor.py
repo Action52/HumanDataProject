@@ -8,10 +8,13 @@ from tqdm import tqdm
 
 import matplotlib.pyplot as plt
 
+from hda.utils import get_dataset_shape
+
+
 class Preprocessor:
     BIG_SEGMENTS = 10000 # constant for 0s segments in the beginning
     
-    def __init__(self, config_path):
+    def __init__(self, config_path, mode='train'):
         """
         Initializes the Preprocessor with configuration parameters specified in a YAML file.
 
@@ -25,7 +28,16 @@ class Preprocessor:
             self.config = yaml.safe_load(config_file)
             self.config = self.config["preprocess"]
 
-    def get_file_names(self):
+        self.mode = mode
+
+        if mode == 'val':
+            self.config['data_directory'] = self.config['val_directory']
+        if mode == 'test':
+            self.config['data_directory'] = self.config['test_directory']
+
+        self.total_segments = 0
+
+    def get_file_names(self, data_directory=None):
         """
         Retrieves the names of .mat files containing "HaLT" in their names from the specified data directory.
 
@@ -35,9 +47,12 @@ class Preprocessor:
         Returns:
             list: A list of matching .mat file names.
         """
+        if not data_directory:
+            data_directory = self.config['data_directory']
+
         return [
             file
-            for file in os.listdir(self.config["data_directory"])
+            for file in os.listdir(data_directory)
             if file.endswith(".mat") and "HaLT" in file
         ]
 
@@ -58,7 +73,7 @@ class Preprocessor:
         pad_size = window_size // 2
         smoothed_eeg_data = np.empty_like(eeg_data)
 
-        for i in tqdm(range(eeg_data.shape[1]), desc="smoothen eeg"):
+        for i in range(eeg_data.shape[1]):  # tqdm(range(eeg_data.shape[1]), desc="smoothen eeg"):
             padded_channel = np.pad(eeg_data[:, i], pad_size, mode="edge")
             smoothed_channel = np.convolve(
                 padded_channel, np.ones(window_size) / window_size, mode="same"
@@ -138,7 +153,7 @@ class Preprocessor:
         segments_by_labels = []
         start = end = 0
 
-        for i in tqdm(range(len(marker)), desc="process the marker"):
+        for i in range(len(marker)):  # tqdm(range(len(marker)), desc="process the marker"):
             if i < len(marker) - 1 and marker[i] == marker[i + 1]:
                 end += 1
                 continue
@@ -281,7 +296,7 @@ class Preprocessor:
 
         return data, smoothened_data
 
-    def _preload_raw_dataset(self, filename):
+    def _preload_raw_dataset(self, filename, directory=None):
         """
         Preloads the dataset from a specified .mat file.
 
@@ -294,7 +309,9 @@ class Preprocessor:
         Returns:
             dict: The data structure loaded from the .mat file, typically containing both the raw data and its associated metadata.
         """
-        file_path = os.path.join(self.config["data_directory"], filename)
+        if not directory:
+            directory = self.config["data_directory"]
+        file_path = os.path.join(directory, filename)
         mat_data = scipy.io.loadmat(file_path)
 
         return mat_data
@@ -319,7 +336,8 @@ class Preprocessor:
         if isinstance(filename, bytes):
             filename = filename.decode("utf-8")
 
-        mat_data = self._preload_raw_dataset(filename)
+
+        mat_data = self._preload_raw_dataset(filename, )
 
         dataset_information = self._get_data_information(mat_data)
         segment_informations = self._create_segment_indexes_from_dataset(
@@ -347,7 +365,7 @@ class Preprocessor:
             )
             stacked_segment = np.stack(segment, axis=0)  # Shape: (6, 200, 22)
             all_segments.append((stacked_segment, label))
-
+            self.total_segments += 1
         return all_segments
 
     def _pad_sequences(
@@ -399,7 +417,14 @@ class Preprocessor:
 
         return padded_sequences
 
-    def run(self):
+    def _set_shapes(self, features, labels):
+        _, versions, time_steps, channels = get_dataset_shape(self.config)
+        features.set_shape([None, versions, time_steps,
+                            channels])
+        labels.set_shape([None])
+        return features, labels
+
+    def run(self, data_directory=None):
         """
         Constructs and returns a TensorFlow dataset from preprocessed EEG data files.
 
@@ -417,7 +442,10 @@ class Preprocessor:
                              associated labels. This dataset is ready for use in training or evaluating machine
                              learning models.
         """
-        filenames = self.get_file_names()
+        if not data_directory:
+            data_directory = self.config['data_directory']
+
+        filenames = self.get_file_names(data_directory)
 
         def preprocess_func(file_name):
             file_name_str = file_name.numpy().decode("utf-8")
@@ -445,14 +473,16 @@ class Preprocessor:
         )
 
         if self.config["cache_file"]:
-            dataset = dataset.cache()
+            dataset = dataset.cache(f'{self.mode}_dataset_cache')
 
         if self.config["shuffle"]:
             dataset = dataset.shuffle(self.config["batch_size"])
 
-        dataset = dataset.repeat()
+        # dataset = dataset.repeat()
         dataset = dataset.batch(self.config["batch_size"])
         dataset = dataset.prefetch(self.config["batch_size"])
+
+        dataset = dataset.map(self._set_shapes)
 
         return dataset
 

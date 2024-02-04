@@ -1,4 +1,4 @@
-from base_model import WandbKerasModel
+from hda.models.base_model import WandbKerasModel
 
 # Initialize a WandbKerasModel without a model (or with a dummy model)
 wandb_model = WandbKerasModel(
