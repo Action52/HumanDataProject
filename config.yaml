@@ -29,3 +29,18 @@ convolutions_conf:
     filters: 4
     kernel_size: 5
     activation: 'relu'
+
+dense_conf:
+  flatten_dropout:
+    dropout: 0.5
+  dense1:
+    units: 128
+    activation: relu
+  dropout1:
+    dropout: 0.3
+  dense2:
+    units: 64
+    activation: relu
+  output:
+    units: 7
+    activation: softmax

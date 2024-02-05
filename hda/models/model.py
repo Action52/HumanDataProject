@@ -1,5 +1,5 @@
 import tensorflow as tf
-from keras.layers import Layer, Flatten, Conv1D, Dense, Lambda, Concatenate
+from keras.layers import Layer, Flatten, Conv1D, Dense, Lambda, Concatenate, Dropout
 from matplotlib import pyplot as plt
 from sklearn.metrics import confusion_matrix
 from sklearn.utils.class_weight import compute_class_weight
@@ -35,19 +35,37 @@ class WindowsConvolutionLayer(Layer):
         combined = Lambda(lambda x: tf.concat(x, axis=-2))(conv_outputs)  # Shape: (20, 6, 207, 22, 4)
         return combined
 
+class DenseLayer(Layer):
+    def __init__(self, dense_conf, **kwargs):
+        super(DenseLayer, self).__init__(**kwargs)
+        self.sequence = [Flatten()]  # Start with a Flatten layer
 
+        # Iterate through the configuration dictionary
+        for _, config in dense_conf.items():
+            if 'dropout' in config:
+                # Interpret this layer as a Dropout layer
+                self.sequence.append(Dropout(rate=config['dropout']))
+                
+            # Interpret this layer as a Dense layer
+            activation = config.get('activation', 'relu') if 'activation' in config else 'softmax'
+            self.sequence.append(Dense(units=config['units'], activation=activation))
+
+    def call(self, inputs):
+        x = inputs
+        for layer in self.sequence:
+            x = layer(x)
+        return x
+    
 class TimeSeriesModel(tf.keras.Model):
-    def __init__(self, num_versions, time_steps, diodes, num_classes, convolutions_conf, **kwargs):
+    def __init__(self, num_versions, time_steps, diodes, num_classes, convolutions_conf, dense_conf, **kwargs):
         super(TimeSeriesModel, self).__init__(**kwargs)
         self.multi_version_conv = WindowsConvolutionLayer(diodes, convolutions_conf)
-        self.flatten = Flatten()
-        self.dense = Dense(units=num_classes, activation='softmax')
+        self.dense = DenseLayer(dense_conf)
 
     def call(self, inputs):
         x = self.multi_version_conv(inputs)
-        x = self.flatten(x)
-        outputs = self.dense(x)
-        return outputs
+        x = self.dense(x)
+        return x
 
 
 def main():
@@ -69,7 +87,7 @@ def main():
     class_weight_dict = dict(zip(classes, class_weights))
 
     # Instantiate the model
-    model = TimeSeriesModel(versions, time_steps, diodes, 7, config['convolutions_conf'])
+    model = TimeSeriesModel(versions, time_steps, diodes, 7, config['convolutions_conf'], config['dense_conf'])
 
     # Compile the model
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
