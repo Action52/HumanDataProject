@@ -175,7 +175,7 @@ class Preprocessor:
             this will break down big 0s segment to several segments. 
             This will only apply for segments more in the beginning of the data
         """
-        if end-start < self.BIG_SEGMENTS and marker != 0:
+        if end-start < self.BIG_SEGMENTS or marker != 0:
             return [[(start, end), marker]]
         
         new_segments = []
@@ -423,6 +423,31 @@ class Preprocessor:
                             channels])
         labels.set_shape([None])
         return features, labels
+    
+    def _get_approximate_dataset_size(self, filenames):
+        """
+        Get the approximate size of the dataset to be loaded.
+
+        This method calculates the approximate size of the dataset to be loaded, based on the number of files and the
+        number of segments in each file. It does so by counting the number of segments in each file and summing them up.
+
+        Args:
+            filenames (list): A list of file names to be loaded.
+
+        Returns:
+            int: The approximate size of the dataset to be loaded.
+        """
+        dataset_size = 0
+
+        for filename in filenames:
+            mat_data = self._preload_raw_dataset(filename)
+            dataset_information = self._get_data_information(mat_data)
+            segment_informations = self._create_segment_indexes_from_dataset(
+                dataset_information
+            )
+            dataset_size += len(segment_informations)
+
+        return dataset_size
 
     def run(self, data_directory=None):
         """
@@ -446,6 +471,9 @@ class Preprocessor:
             data_directory = self.config['data_directory']
 
         filenames = self.get_file_names(data_directory)
+        
+        # Get size of the data set
+        approximate_dataset_size = self._get_approximate_dataset_size(filenames)
 
         def preprocess_func(file_name):
             file_name_str = file_name.numpy().decode("utf-8")
@@ -478,20 +506,32 @@ class Preprocessor:
         if self.config["shuffle"]:
             dataset = dataset.shuffle(self.config["batch_size"])
 
+        train_size = int(0.8 * approximate_dataset_size)
+        val_size = int(0.2 * approximate_dataset_size)
+
+        train_dataset = dataset.take(train_size)
+        remaining = dataset.skip(train_size)
+        val_dataset = remaining.take(val_size)
+
         # dataset = dataset.repeat()
-        dataset = dataset.batch(self.config["batch_size"])
-        dataset = dataset.prefetch(self.config["batch_size"])
+        
+        # Further processing like batching can be applied to each split dataset
+        train_dataset = train_dataset.batch(self.config["batch_size"]).prefetch(tf.data.AUTOTUNE)
+        val_dataset = val_dataset.batch(self.config["batch_size"]).prefetch(tf.data.AUTOTUNE)
 
-        dataset = dataset.map(self._set_shapes)
+        # Assuming _set_shapes is meant to finalize the dataset shapes, apply it if necessary
+        train_dataset = train_dataset.map(self._set_shapes)
+        val_dataset = val_dataset.map(self._set_shapes)
 
-        return dataset
+        # Return or use the split datasets as needed
+        return train_dataset, val_dataset
 
 
 def main():
     # Test code
     preprocessor = Preprocessor("config.yaml")
-    dataset = preprocessor.run()
-    for data, label in dataset.take(20).as_numpy_iterator():
+    train_dataset, val_dataset = preprocessor.run()
+    for data, label in val_dataset.take(20).as_numpy_iterator():
         print(f"Shape: {data.shape}, Label: {label}")
 
         # Determine the number of time series to plot
