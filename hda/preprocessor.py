@@ -471,15 +471,12 @@ class Preprocessor:
             data_directory = self.config['data_directory']
 
         filenames = self.get_file_names(data_directory)
-        
-        # Get size of the data set
+
         approximate_dataset_size = self._get_approximate_dataset_size(filenames)
 
         def preprocess_func(file_name):
             file_name_str = file_name.numpy().decode("utf-8")
-            # Process and ensure uniform shapes for all segments
             segments, labels = zip(*self.load_and_preprocess(file_name_str))
-            # Convert segments and labels to tensors
             segments_tensor = tf.convert_to_tensor(segments, dtype=tf.float32)
             labels_tensor = tf.convert_to_tensor(labels, dtype=tf.int32)
             return segments_tensor, labels_tensor
@@ -504,33 +501,34 @@ class Preprocessor:
             dataset = dataset.cache(f'{self.mode}_dataset_cache')
 
         if self.config["shuffle"]:
-            dataset = dataset.shuffle(self.config["batch_size"])
+            dataset = dataset.shuffle(buffer_size=approximate_dataset_size)
 
-        train_size = int(0.8 * approximate_dataset_size)
-        val_size = int(0.2 * approximate_dataset_size)
+        # Set sizes for train, validation, and test datasets
+        train_size = int(float(self.config["train_size"]) * approximate_dataset_size)
+        val_size = int(float(self.config["val_size"]) * approximate_dataset_size)
+
+        # Calculate the total size for train and validation to adjust test dataset extraction
+        train_val_size = train_size + val_size
 
         train_dataset = dataset.take(train_size)
-        remaining = dataset.skip(train_size)
-        val_dataset = remaining.take(val_size)
+        val_dataset = dataset.skip(train_size).take(val_size)
+        test_dataset = dataset.skip(train_val_size)
 
-        # dataset = dataset.repeat()
-        
-        # Further processing like batching can be applied to each split dataset
         train_dataset = train_dataset.batch(self.config["batch_size"]).prefetch(tf.data.AUTOTUNE)
         val_dataset = val_dataset.batch(self.config["batch_size"]).prefetch(tf.data.AUTOTUNE)
+        test_dataset = test_dataset.batch(self.config["batch_size"]).prefetch(tf.data.AUTOTUNE)
 
-        # Assuming _set_shapes is meant to finalize the dataset shapes, apply it if necessary
         train_dataset = train_dataset.map(self._set_shapes)
         val_dataset = val_dataset.map(self._set_shapes)
+        test_dataset = test_dataset.map(self._set_shapes)
 
-        # Return or use the split datasets as needed
-        return train_dataset, val_dataset
+        return train_dataset, val_dataset, test_dataset
 
 
 def main():
     # Test code
     preprocessor = Preprocessor("config.yaml")
-    train_dataset, val_dataset = preprocessor.run()
+    train_dataset, val_dataset, test_dataset = preprocessor.run()
     for data, label in val_dataset.take(20).as_numpy_iterator():
         print(f"Shape: {data.shape}, Label: {label}")
 
