@@ -45,10 +45,10 @@ class DenseLayer(Layer):
             if 'dropout' in config:
                 # Interpret this layer as a Dropout layer
                 self.sequence.append(Dropout(rate=config['dropout']))
-                
-            # Interpret this layer as a Dense layer
-            activation = config.get('activation', 'relu') if 'activation' in config else 'softmax'
-            self.sequence.append(Dense(units=config['units'], activation=activation))
+            elif 'dense' or 'output' in config:
+                # Interpret this layer as a Dense layer
+                activation = config.get('activation', 'relu') if 'activation' in config else 'softmax'
+                self.sequence.append(Dense(units=config['units'], activation=activation))
 
     def call(self, inputs):
         x = inputs
@@ -69,17 +69,12 @@ class TimeSeriesModel(tf.keras.Model):
 
 
 def main():
-
     config = load_config("config.yaml")
     batch_size, versions, time_steps, diodes = get_dataset_shape(config)
 
-    train_preprocessor = Preprocessor("config.yaml")
-    val_preprocessor = Preprocessor("config.yaml", mode='val')
-    test_preprocessor = Preprocessor("config.yaml", mode="test")
-    train_dataset = train_preprocessor.run()
-    test_dataset = test_preprocessor.run()
-    val_dataset = val_preprocessor.run()
-
+    preprocessor = Preprocessor("config.yaml")
+    train_dataset, val_dataset, test_dataset = preprocessor.run()
+    
     y_train = np.concatenate([np.array([label.numpy()]) for _, label in train_dataset.unbatch()], axis=0)
 
     classes = np.unique(y_train)
@@ -113,7 +108,7 @@ def main():
     y_pred = []
 
     # Assuming your test_dataset yields (features, labels)
-    for features, labels in val_dataset:
+    for features, labels in test_dataset:
         preds = model.predict(features)
         y_true.extend(labels.numpy().flatten())
         y_pred.extend(np.argmax(preds, axis=-1).flatten())

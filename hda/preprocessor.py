@@ -175,7 +175,7 @@ class Preprocessor:
             this will break down big 0s segment to several segments. 
             This will only apply for segments more in the beginning of the data
         """
-        if end-start < self.BIG_SEGMENTS and marker != 0:
+        if end-start < self.BIG_SEGMENTS or marker != 0:
             return [[(start, end), marker]]
         
         new_segments = []
@@ -423,6 +423,31 @@ class Preprocessor:
                             channels])
         labels.set_shape([None])
         return features, labels
+    
+    def _get_approximate_dataset_size(self, filenames):
+        """
+        Get the approximate size of the dataset to be loaded.
+
+        This method calculates the approximate size of the dataset to be loaded, based on the number of files and the
+        number of segments in each file. It does so by counting the number of segments in each file and summing them up.
+
+        Args:
+            filenames (list): A list of file names to be loaded.
+
+        Returns:
+            int: The approximate size of the dataset to be loaded.
+        """
+        dataset_size = 0
+
+        for filename in filenames:
+            mat_data = self._preload_raw_dataset(filename)
+            dataset_information = self._get_data_information(mat_data)
+            segment_informations = self._create_segment_indexes_from_dataset(
+                dataset_information
+            )
+            dataset_size += len(segment_informations)
+
+        return dataset_size
 
     def run(self, data_directory=None):
         """
@@ -447,11 +472,11 @@ class Preprocessor:
 
         filenames = self.get_file_names(data_directory)
 
+        approximate_dataset_size = self._get_approximate_dataset_size(filenames)
+
         def preprocess_func(file_name):
             file_name_str = file_name.numpy().decode("utf-8")
-            # Process and ensure uniform shapes for all segments
             segments, labels = zip(*self.load_and_preprocess(file_name_str))
-            # Convert segments and labels to tensors
             segments_tensor = tf.convert_to_tensor(segments, dtype=tf.float32)
             labels_tensor = tf.convert_to_tensor(labels, dtype=tf.int32)
             return segments_tensor, labels_tensor
@@ -476,22 +501,35 @@ class Preprocessor:
             dataset = dataset.cache(f'{self.mode}_dataset_cache')
 
         if self.config["shuffle"]:
-            dataset = dataset.shuffle(self.config["batch_size"])
+            dataset = dataset.shuffle(buffer_size=approximate_dataset_size)
 
-        # dataset = dataset.repeat()
-        dataset = dataset.batch(self.config["batch_size"])
-        dataset = dataset.prefetch(self.config["batch_size"])
+        # Set sizes for train, validation, and test datasets
+        train_size = int(float(self.config["train_size"]) * approximate_dataset_size)
+        val_size = int(float(self.config["val_size"]) * approximate_dataset_size)
 
-        dataset = dataset.map(self._set_shapes)
+        # Calculate the total size for train and validation to adjust test dataset extraction
+        train_val_size = train_size + val_size
 
-        return dataset
+        train_dataset = dataset.take(train_size)
+        val_dataset = dataset.skip(train_size).take(val_size)
+        test_dataset = dataset.skip(train_val_size)
+
+        train_dataset = train_dataset.batch(self.config["batch_size"]).prefetch(tf.data.AUTOTUNE)
+        val_dataset = val_dataset.batch(self.config["batch_size"]).prefetch(tf.data.AUTOTUNE)
+        test_dataset = test_dataset.batch(self.config["batch_size"]).prefetch(tf.data.AUTOTUNE)
+
+        train_dataset = train_dataset.map(self._set_shapes)
+        val_dataset = val_dataset.map(self._set_shapes)
+        test_dataset = test_dataset.map(self._set_shapes)
+
+        return train_dataset, val_dataset, test_dataset
 
 
 def main():
     # Test code
     preprocessor = Preprocessor("config.yaml")
-    dataset = preprocessor.run()
-    for data, label in dataset.take(20).as_numpy_iterator():
+    train_dataset, val_dataset, test_dataset = preprocessor.run()
+    for data, label in val_dataset.take(20).as_numpy_iterator():
         print(f"Shape: {data.shape}, Label: {label}")
 
         # Determine the number of time series to plot

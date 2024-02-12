@@ -6,6 +6,9 @@ preprocess:
   shuffle: true
   batch_size: 20
   is_normalized: true
+  train_size: 0.80
+  test_size: 0.15
+  val_size: 0.05
   smoothing_windows:
     - 20
     - 75
