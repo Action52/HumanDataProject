@@ -471,9 +471,9 @@ class Preprocessor:
             data_directory = self.config['data_directory']
 
         filenames = self.get_file_names(data_directory)
-
+        print(filenames)
         approximate_dataset_size = self._get_approximate_dataset_size(filenames)
-
+        print(approximate_dataset_size)
         def preprocess_func(file_name):
             file_name_str = file_name.numpy().decode("utf-8")
             segments, labels = zip(*self.load_and_preprocess(file_name_str))
@@ -505,14 +505,15 @@ class Preprocessor:
 
         # Set sizes for train, validation, and test datasets
         train_size = int(float(self.config["train_size"]) * approximate_dataset_size)
-        val_size = int(float(self.config["val_size"]) * approximate_dataset_size)
+        val_size = int(float(self.config["val_size"]) * train_size)
+        test_size = int(float(self.config["test_size"]) * approximate_dataset_size)
 
         # Calculate the total size for train and validation to adjust test dataset extraction
         train_val_size = train_size + val_size
 
         train_dataset = dataset.take(train_size)
-        val_dataset = dataset.skip(train_size).take(val_size)
-        test_dataset = dataset.skip(train_val_size)
+        val_dataset = train_dataset.take(val_size)
+        test_dataset = dataset.take(test_size)
 
         train_dataset = train_dataset.batch(self.config["batch_size"]).prefetch(tf.data.AUTOTUNE)
         val_dataset = val_dataset.batch(self.config["batch_size"]).prefetch(tf.data.AUTOTUNE)
@@ -529,8 +530,17 @@ def main():
     # Test code
     preprocessor = Preprocessor("config.yaml")
     train_dataset, val_dataset, test_dataset = preprocessor.run()
-    for data, label in val_dataset.take(20).as_numpy_iterator():
-        print(f"Shape: {data.shape}, Label: {label}")
+    train_count = val_count = test_count = 0
+    for _ in train_dataset.as_numpy_iterator():
+        train_count += 1
+    for _ in val_dataset.as_numpy_iterator():
+        val_count += 1
+    for _ in test_dataset.as_numpy_iterator():
+        test_count += 1
+    print(train_count, val_count, test_count)
+
+    for data, label in train_dataset.as_numpy_iterator():
+        #print(f"Shape: {data.shape}, Label: {label}")
 
         # Determine the number of time series to plot
         num_ts = data[0].shape[
