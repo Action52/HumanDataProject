@@ -474,6 +474,7 @@ class Preprocessor:
         print(filenames)
         approximate_dataset_size = self._get_approximate_dataset_size(filenames)
         print(approximate_dataset_size)
+
         def preprocess_func(file_name):
             file_name_str = file_name.numpy().decode("utf-8")
             segments, labels = zip(*self.load_and_preprocess(file_name_str))

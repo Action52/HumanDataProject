@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import yaml
 import numpy as np
 from matplotlib.colors import Normalize
+import tensorflow as tf
 
 
 def load_config(config_path):

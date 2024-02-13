@@ -1,9 +1,15 @@
+from collections import Counter
+
 import tensorflow as tf
-from keras.layers import Layer, Flatten, Conv1D, Dense, Lambda, Concatenate, Dropout
+from keras.layers import Layer, Flatten, Conv1D, Dense, Lambda, Concatenate, Dropout, BatchNormalization, GRU, SimpleRNN
+from keras.metrics import Precision, Recall
 from matplotlib import pyplot as plt
 from sklearn.metrics import confusion_matrix
 from sklearn.utils.class_weight import compute_class_weight
 import seaborn as sns
+from hda.utils import SparsePrecision, SparseRecall
+from hda.models.base_model import WandbKerasModel
+
 
 from hda.preprocessor import Preprocessor
 from hda.utils import load_config, get_dataset_shape, plot_conv1d_filters, \
@@ -35,6 +41,7 @@ class WindowsConvolutionLayer(Layer):
         combined = Lambda(lambda x: tf.concat(x, axis=-2))(conv_outputs)  # Shape: (20, 6, 207, 22, 4)
         return combined
 
+
 class DenseLayer(Layer):
     def __init__(self, dense_conf, **kwargs):
         super(DenseLayer, self).__init__(**kwargs)
@@ -55,15 +62,48 @@ class DenseLayer(Layer):
         for layer in self.sequence:
             x = layer(x)
         return x
-    
-class TimeSeriesModel(tf.keras.Model):
+
+
+class TimeSeriesModelSimple(tf.keras.Model):
     def __init__(self, num_versions, time_steps, diodes, num_classes, convolutions_conf, dense_conf, **kwargs):
-        super(TimeSeriesModel, self).__init__(**kwargs)
+        super(TimeSeriesModelSimple, self).__init__(**kwargs)
         self.multi_version_conv = WindowsConvolutionLayer(diodes, convolutions_conf)
         self.dense = DenseLayer(dense_conf)
 
     def call(self, inputs):
         x = self.multi_version_conv(inputs)
+        x = self.dense(x)
+        return x
+
+
+class TimeSeriesModelGRU(tf.keras.Model):
+    def __init__(self, num_versions, time_steps, diodes, num_classes, convolutions_conf, dense_conf, gru_conf, **kwargs):
+        super(TimeSeriesModelGRU, self).__init__(**kwargs)
+        self.multi_version_conv = WindowsConvolutionLayer(diodes, convolutions_conf)
+        self.gru_layer = GRU(**gru_conf)
+        self.dense = DenseLayer(dense_conf)
+
+    def call(self, inputs):
+        x = self.multi_version_conv(inputs)
+        # We need to merge the versions and diodes dimensions and treat it as the features dimension for the GRU
+        x = tf.reshape(x, shape=(-1, x.shape[2], x.shape[1] * x.shape[3] * x.shape[4]))
+        x = self.gru_layer(x)
+        x = self.dense(x)
+        return x
+
+
+class TimeSeriesModelVanillaRNN(tf.keras.Model):
+    def __init__(self, num_versions, time_steps, diodes, num_classes, convolutions_conf, dense_conf, rnn_conf, **kwargs):
+        super(TimeSeriesModelVanillaRNN, self).__init__(**kwargs)
+        self.multi_version_conv = WindowsConvolutionLayer(diodes, convolutions_conf)
+        self.rnn_layer = SimpleRNN(**rnn_conf)
+        self.dense = DenseLayer(dense_conf)
+
+    def call(self, inputs):
+        x = self.multi_version_conv(inputs)
+        # We need to merge the versions and diodes dimensions and treat it as the features dimension for the GRU
+        x = tf.reshape(x, shape=(-1, x.shape[2], x.shape[1] * x.shape[3] * x.shape[4]))
+        x = self.rnn_layer(x)
         x = self.dense(x)
         return x
 
@@ -81,35 +121,48 @@ def main():
     class_weights = compute_class_weight(class_weight='balanced', classes=classes, y=y_train)
     class_weight_dict = dict(zip(classes, class_weights))
 
+
     # Instantiate the model
-    model = TimeSeriesModel(versions, time_steps, diodes, 7, config['convolutions_conf'], config['dense_conf'])
-
-    # Compile the model
-    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-
-    # Provide the input shape to build the model (necessary for model.summary())
+    model = TimeSeriesModelGRU(
+        versions, time_steps, diodes, 7,
+        config['convolutions_conf'],
+        config['dense_conf'],
+        gru_conf=config['gru']
+    )
     model.build(input_shape=(batch_size, versions, time_steps, diodes))
 
-    # Model summary to check the architecture
-    model.summary()
+    # Wrap the model with WandbKerasModel
+    wandb_model = WandbKerasModel(
+        model=model, project_name="hda_small", config={}, entity="bdma"
+    )
 
-    # Training the model with validation
-    # Training the model with validation
-    history = model.fit(
-        train_dataset,
-        epochs=3,
-        validation_data=val_dataset,
-        class_weight=class_weight_dict
+    # Model summary to check the architecture
+    wandb_model.model.summary()
+
+    # Compile and fit the model
+    wandb_model.compile_and_fit(
+        compile_args={
+            "optimizer": "adam",
+            "loss": "sparse_categorical_crossentropy",
+            "metrics": ["accuracy"],
+        },
+        fit_args={
+            "x": train_dataset,
+            "epochs": 3,
+            "validation_data": val_dataset,
+            "experiment_name": "GRU_with_weights_tanh",
+            "class_weight": class_weight_dict,
+        },
     )
 
     # Evaluate the model on the test set and print the confusion matrix
-    print("Evaluating on val set...")
+    print("Evaluating on test set...")
     y_true = []
     y_pred = []
 
     # Assuming your test_dataset yields (features, labels)
     for features, labels in test_dataset:
-        preds = model.predict(features)
+        preds = wandb_model.model.predict(features)
         y_true.extend(labels.numpy().flatten())
         y_pred.extend(np.argmax(preds, axis=-1).flatten())
 
@@ -126,29 +179,7 @@ def main():
     plt.title('Confusion Matrix')
     plt.show()
 
-    # Create an intermediate model using the functional API
-    inputs = tf.keras.Input(shape=(versions, time_steps, diodes))
-    x = model.multi_version_conv(
-        inputs)  # Use the WindowsConvolutionLayer as a functional layer
-    intermediate_model = tf.keras.Model(inputs=inputs, outputs=x)
-
-    # Prepare a sample input
-    sample_input = tf.random.normal([1, versions, time_steps, diodes])
-
-    # Pass the sample input through the model to ensure it's built
-    _ = model(sample_input)
-
-    # Get the feature maps for the sample input
-    feature_maps = intermediate_model.predict(sample_input)
-    print(feature_maps.shape)
-
-    # Assuming the shape of feature_maps is (1, versions, time_steps, diodes, filters)
-    # And you want to plot for the first diode
-    diode_index = 0  # Index for the first diode
-
-    # Plot the feature maps for the selected diode across all versions
-    print(f"Feature Maps for Diode {diode_index + 1}")
-    plot_feature_maps(feature_maps, diode_index=diode_index)
+    wandb_model.finish_experiment()
 
 
 if __name__ == '__main__':

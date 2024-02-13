@@ -18,9 +18,10 @@ jaxlib = "^0.4.23"
 wandb = "^0.16.2"
 jupyterlab = "^4.0.11"
 #tensorflow-io = "0.34.0"
-#tensorflow-macos = "^2.15.0"
+#tensorflow-macos = "2.15.0"
 pylint = "^3.0.3"
 black = "^24.1.1"
+ncps = "^0.0.7"
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.0.0"
