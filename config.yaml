@@ -20,7 +20,8 @@ preprocess:
     - 91
     - 92
     - 99
-  max_length_ts: 215
+    - 0
+  max_length_ts: 315
   channels: 22
 
 convolutions_conf:
