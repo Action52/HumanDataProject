@@ -44,13 +44,8 @@ dense_conf:
   dense1:
     units: 64
     activation: relu
-  dropout1:
-    dropout: 0.3
-  dense2:
-    units: 32
-    activation: relu
   output:
-    units: 7
+    units: 6
     activation: softmax
 
 gru:
