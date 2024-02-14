@@ -445,13 +445,12 @@ class Preprocessor:
         """
         dataset_size = 0
 
-        for filename in filenames:
+        for filename in tqdm(filenames, desc="get approximate dataset size"):
             mat_data = self._preload_raw_dataset(filename)
             dataset_information = self._get_data_information(mat_data)
             segment_informations = self._create_segment_indexes_from_dataset(
                 dataset_information
             )
-            dataset_size = 0
             
             for _ , label in segment_informations:
                 if label in self.config["drop_labels"]:
