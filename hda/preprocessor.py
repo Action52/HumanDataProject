@@ -9,7 +9,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 from hda.utils import get_dataset_shape
-from hda.constants import BIG_SEGMENTS, CLASS_MAPPER, SEGMENT_PADDING
+from hda.constants import BIG_SEGMENTS, CLASS_MAPPER, SEGMENT_PADDING, ZERO
 
 
 class Preprocessor:
@@ -359,7 +359,7 @@ class Preprocessor:
             if label in self.config["drop_labels"]:
                 continue
             
-            if 0 not in self.config["drop_labels"]:
+            if ZERO in self.config["drop_labels"]:
                 label = CLASS_MAPPER[label]
             
             segment, _ = self._segment_ts(
