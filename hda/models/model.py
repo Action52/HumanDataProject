@@ -1,19 +1,14 @@
-from collections import Counter
+
 
 import tensorflow as tf
-from keras.layers import Layer, Flatten, Conv1D, Dense, Lambda, Concatenate, Dropout, BatchNormalization, GRU, SimpleRNN
-from keras.metrics import Precision, Recall
-from matplotlib import pyplot as plt
-from sklearn.metrics import confusion_matrix
+
+from keras.layers import Layer, Flatten, Conv1D, Dense, Lambda,  Dropout, GRU, SimpleRNN, LSTM
 from sklearn.utils.class_weight import compute_class_weight
-import seaborn as sns
 from hda.models.base_model import WandbKerasModel
 
 
 from hda.preprocessor import Preprocessor
-from hda.utils import load_config, get_dataset_shape, plot_conv1d_filters, \
-    plot_feature_maps
-
+from hda.utils import load_config, get_dataset_shape, predict_and_plot
 import numpy as np
 
 
@@ -64,7 +59,7 @@ class DenseLayer(Layer):
 
 
 class TimeSeriesModelSimple(tf.keras.Model):
-    def __init__(self, num_versions, time_steps, diodes, num_classes, convolutions_conf, dense_conf, **kwargs):
+    def __init__(self, diodes, convolutions_conf, dense_conf, **kwargs):
         super(TimeSeriesModelSimple, self).__init__(**kwargs)
         self.multi_version_conv = WindowsConvolutionLayer(diodes, convolutions_conf)
         self.dense = DenseLayer(dense_conf)
@@ -76,7 +71,7 @@ class TimeSeriesModelSimple(tf.keras.Model):
 
 
 class TimeSeriesModelGRU(tf.keras.Model):
-    def __init__(self, num_versions, time_steps, diodes, num_classes, convolutions_conf, dense_conf, gru_conf, **kwargs):
+    def __init__(self, diodes, convolutions_conf, dense_conf, gru_conf, **kwargs):
         super(TimeSeriesModelGRU, self).__init__(**kwargs)
         self.multi_version_conv = WindowsConvolutionLayer(diodes, convolutions_conf)
         self.gru_layer = GRU(**gru_conf)
@@ -92,7 +87,7 @@ class TimeSeriesModelGRU(tf.keras.Model):
 
 
 class TimeSeriesModelVanillaRNN(tf.keras.Model):
-    def __init__(self, num_versions, time_steps, diodes, num_classes, convolutions_conf, dense_conf, rnn_conf, **kwargs):
+    def __init__(self, diodes, convolutions_conf, dense_conf, rnn_conf, **kwargs):
         super(TimeSeriesModelVanillaRNN, self).__init__(**kwargs)
         self.multi_version_conv = WindowsConvolutionLayer(diodes, convolutions_conf)
         self.rnn_layer = SimpleRNN(**rnn_conf)
@@ -107,77 +102,76 @@ class TimeSeriesModelVanillaRNN(tf.keras.Model):
         return x
 
 
+class TimeSeriesModelLSTM(tf.keras.Model):
+    def __init__(self, diodes,  convolutions_conf, dense_conf, lstm_conf, **kwargs):
+        super(TimeSeriesModelLSTM, self).__init__(**kwargs)
+        self.multi_version_conv = WindowsConvolutionLayer(diodes, convolutions_conf)
+        self.lstm_layer = LSTM(**lstm_conf)
+        self.dense = DenseLayer(dense_conf)
+
+    def call(self, inputs):
+        x = self.multi_version_conv(inputs)
+        x = tf.reshape(x, shape=(-1, x.shape[2], x.shape[1] * x.shape[3] * x.shape[4]))
+        x = self.lstm_layer(x)
+        x = self.dense(x)
+        return x
+
+
 def main():
     config = load_config("config.yaml")
     batch_size, versions, time_steps, diodes = get_dataset_shape(config)
-
+    
     preprocessor = Preprocessor("config.yaml")
     train_dataset, val_dataset, test_dataset = preprocessor.run()
-    
     y_train = np.concatenate([np.array([label.numpy()]) for _, label in train_dataset.unbatch()], axis=0)
-
     classes = np.unique(y_train)
-    class_weights = compute_class_weight(class_weight='balanced', classes=classes, y=y_train)
-    class_weight_dict = dict(zip(classes, class_weights))
-
-
-    # Instantiate the model
-    model = TimeSeriesModelGRU(
-        versions, time_steps, diodes, 7,
-        config['convolutions_conf'],
-        config['dense_conf'],
-        gru_conf=config['gru']
-    )
-    model.build(input_shape=(batch_size, versions, time_steps, diodes))
-
-    # Wrap the model with WandbKerasModel
-    wandb_model = WandbKerasModel(
-        model=model, project_name="hda_small", config={}, entity="bdma"
-    )
-
-    # Model summary to check the architecture
-    wandb_model.model.summary()
-
-    # Compile and fit the model
-    wandb_model.compile_and_fit(
-        compile_args={
-            "optimizer": "adam",
-            "loss": "sparse_categorical_crossentropy",
-            "metrics": ["accuracy"],
-        },
-        fit_args={
+    
+    # Build fit arguments
+    fit_args = {
             "x": train_dataset,
-            "epochs": 3,
+            "epochs": config['epochs'],
             "validation_data": val_dataset,
-            "experiment_name": "GRU_with_weights_tanh",
-            "class_weight": class_weight_dict,
-        },
-    )
+        }
+    
+    if config['with_weights']:
+        class_weights = compute_class_weight(class_weight='balanced', classes=classes, y=y_train)
+        class_weight_dict = dict(zip(classes, class_weights))
+        fit_args['class_weight'] = class_weight_dict
+        
+    experiments = {
+        "simple": TimeSeriesModelSimple(diodes, config['convolutions_conf'], config['dense_conf']),
+        "gru": TimeSeriesModelGRU(diodes, config['convolutions_conf'], config['dense_conf'], gru_conf=config['gru']),
+        "vanilla_rnn": TimeSeriesModelVanillaRNN(diodes, config['convolutions_conf'], config['dense_conf'], rnn_conf=config['simple_rnn']),
+        "lstm": TimeSeriesModelLSTM(diodes, config['convolutions_conf'], config['dense_conf'], lstm_conf=config['lstm'])
+    }
+    
+    for name, model in experiments.items():
+        fit_args["experiment_name"] = f"{name}_without_weights_tanh"
+        
+        # Instantiate the model
+        model.build(input_shape=(batch_size, versions, time_steps, diodes))
 
-    # Evaluate the model on the test set and print the confusion matrix
-    print("Evaluating on test set...")
-    y_true = []
-    y_pred = []
+        # Wrap the model with WandbKerasModel
+        wandb_model = WandbKerasModel(
+            model=model, project_name="hda-sat", config={}, entity="bdma"
+        )
+        # Model summary to check the architecture
+        wandb_model.model.summary()
 
-    # Assuming your test_dataset yields (features, labels)
-    for features, labels in test_dataset:
-        preds = wandb_model.model.predict(features)
-        y_true.extend(labels.numpy().flatten())
-        y_pred.extend(np.argmax(preds, axis=-1).flatten())
+        # Compile and fit the model
+        wandb_model.compile_and_fit(
+            compile_args={
+                "optimizer": "adam",
+                "loss": "sparse_categorical_crossentropy",
+                "metrics": ["accuracy"],
+            },
+            fit_args=fit_args,
+            config_path='config.yaml'
+        )
 
-    # Compute the confusion matrix
-    cm = confusion_matrix(y_true, y_pred)
-    print("Confusion Matrix:")
-    print(cm)
-
-    # Plot the confusion matrix
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
-    plt.xlabel('Predicted Label')
-    plt.ylabel('True Label')
-    plt.title('Confusion Matrix')
-    plt.show()
-
+        # Evaluate the model on the test set and print the confusion matrix
+        predict_and_plot(wandb_model, test_dataset, config)
+        
     wandb_model.finish_experiment()
 
 

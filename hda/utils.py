@@ -1,9 +1,11 @@
 import matplotlib.pyplot as plt
 import yaml
 import numpy as np
+import seaborn as sns
 
 from matplotlib.colors import Normalize
 from hda.constants import LABELS_WITHOUT_ZERO, LABELS_WITH_ZERO, ZERO
+from sklearn.metrics import confusion_matrix
 
 def load_config(config_path):
     with open(config_path, 'r') as config_file:
@@ -112,3 +114,30 @@ def get_labels_to_classes(drop_labels):
     - The correct labels
     """
     return list(LABELS_WITHOUT_ZERO.values()) if ZERO in drop_labels else list(LABELS_WITH_ZERO.values())
+
+def predict_and_plot(wandb_model, test_dataset, config):
+    y_true = []
+    y_pred = []
+
+    # Assuming your test_dataset yields (features, labels)
+    for features, labels in test_dataset:
+        preds = wandb_model.model.predict(features)
+        y_true.extend(labels.numpy().flatten())
+        y_pred.extend(np.argmax(preds, axis=-1).flatten())
+
+    y_true = map_labels_to_classes(y_true, config['preprocess']['drop_labels'])
+    y_pred = map_labels_to_classes(y_pred, config['preprocess']['drop_labels'])
+    labels = get_labels_to_classes(config['preprocess']['drop_labels'])
+
+    cm = confusion_matrix(y_true, y_pred, labels=labels)
+    print(cm)
+
+    # Modified code to plot the confusion matrix with mapped labels
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=labels, yticklabels=labels)
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    plt.title('Confusion Matrix')
+    plt.xticks(rotation=45)  
+    plt.yticks(rotation=45)  
+    plt.show()

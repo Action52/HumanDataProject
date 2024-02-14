@@ -536,7 +536,6 @@ class Preprocessor:
 
 
 def main():
-    # Test code
     preprocessor = Preprocessor("config.yaml")
     train_dataset, val_dataset, test_dataset = preprocessor.run()
     train_count = val_count = test_count = 0
@@ -548,36 +547,6 @@ def main():
     for _ in test_dataset.as_numpy_iterator():
         test_count += 1
     print(train_count, val_count, test_count)
-
-    # for data, label in train_dataset.as_numpy_iterator():
-    #     print(f"Shape: {data.shape}, Label: {label}")
-
-    #     # Determine the number of time series to plot
-    #     num_ts = data[0].shape[
-    #         0]  # Number of time series in the first element of the batch
-
-        # Create a figure and a set of subplots
-        # fig, axs = plt.subplots(num_ts, 1, figsize=(16, 8))  # Adjust the figure size as needed
-
-        # for i, ts in enumerate(data[0]):
-        #     print(ts.shape)
-
-        #     # If there's only one time series, 'axs' won't be an array, so we need to handle that case
-        #     ax = axs[i] if num_ts > 1 else axs
-
-        #     ax.plot(ts)
-        #     ax.set_title(f"Label: {label}")
-        #     ax.set_xlabel("Time")
-        #     ax.set_ylabel("Amplitude")
-
-        # # Adjust layout to prevent overlap
-        # plt.tight_layout()
-
-        # # Display the plot
-        # plt.show()
-
-        # # Clear the current figure before the next batch
-        # plt.clf()
 
 
 if __name__ == "__main__":
