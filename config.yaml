@@ -24,6 +24,9 @@ preprocess:
   max_length_ts: 215
   channels: 22
 
+epochs: 20
+with_weights: false
+
 convolutions_conf:
   conv1:
     filters: 4
@@ -61,4 +64,3 @@ lstm:
   units: 128
   return_sequences: true
   activation: tanh
-
