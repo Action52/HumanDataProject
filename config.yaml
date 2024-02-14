@@ -6,9 +6,9 @@ preprocess:
   shuffle: true
   batch_size: 20
   is_normalized: true
-  train_size: 0.80
-  test_size: 0.20
-  val_size: 0.15
+  train_size: 0.63
+  test_size: 0.10
+  val_size: 0.27
   smoothing_windows:
     - 20
     - 75
@@ -61,3 +61,8 @@ simple_rnn:
   units: 128
   return_sequences: true
   activation: relu
+
+lstm:
+  units: 128
+  return_sequences: true
+  activation: tanh

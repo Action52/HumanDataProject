@@ -359,7 +359,8 @@ class Preprocessor:
             if label in self.config["drop_labels"]:
                 continue
             
-            label = CLASS_MAPPER[label]
+            if 0 not in self.config["drop_labels"]:
+                label = CLASS_MAPPER[label]
             
             segment, _ = self._segment_ts(
                 normalized_data,

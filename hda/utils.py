@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
 import yaml
 import numpy as np
+
 from matplotlib.colors import Normalize
-import tensorflow as tf
+from hda.constants import LABELS_WITHOUT_ZERO, LABELS_WITH_ZERO, ZERO
 
 def load_config(config_path):
     with open(config_path, 'r') as config_file:
@@ -84,3 +85,30 @@ def plot_feature_maps(feature_maps, diode_index, num_versions=6, num_filters=4):
 
     plt.tight_layout()
     plt.show()
+
+
+def map_labels_to_classes(labels, drop_labels):
+    """
+    Maps the labels to their corresponding class index using a dictionary.
+
+    Parameters:
+    - labels: The labels to map to classes.
+    - class_mapper: A dictionary that maps labels to their corresponding class index.
+
+    Returns:
+    - The class indices for the input labels.
+    """
+    class_mapper = LABELS_WITHOUT_ZERO if ZERO in drop_labels else LABELS_WITH_ZERO
+    return np.array([class_mapper[label] for label in labels])
+
+def get_labels_to_classes(drop_labels):
+    """
+    Returns the correct class mapper based on the presence of the zero label in the dataset.
+
+    Parameters:
+    - drop_labels: The labels to drop from the dataset.
+
+    Returns:
+    - The correct labels
+    """
+    return list(LABELS_WITHOUT_ZERO.values()) if ZERO in drop_labels else list(LABELS_WITH_ZERO.values())
