@@ -85,7 +85,7 @@ class WandbKerasModel(WandbManager):
         # Set the Keras model
         self.model = model
 
-    def compile_and_fit(self, compile_args=None, fit_args=None):
+    def compile_and_fit(self, compile_args=None, fit_args=None, config_path=None):
         # Start the wandb experiment
         experiment_name = fit_args.pop("experiment_name", "Unnamed Experiment")
         self.start_experiment(experiment_name=experiment_name)
@@ -108,6 +108,9 @@ class WandbKerasModel(WandbManager):
         # Create a W&B artifact for the model
         artifact = wandb.Artifact(name=f"{experiment_name}_model", type="model")
         artifact.add_dir(model_dir)
+
+        # Add the config.yaml file to the artifact
+        artifact.add_file(config_path)
 
         # Log the artifact
         wandb.log_artifact(artifact)
@@ -246,4 +249,5 @@ if __name__ == "__main__":
             "validation_data": (x_test, y_test),
             "experiment_name": "mnist_simple_nn_3epochs",
         },
+        config_path='config.yaml'
     )
