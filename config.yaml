@@ -66,3 +66,4 @@ lstm:
   units: 128
   return_sequences: true
   activation: tanh
+

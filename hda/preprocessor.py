@@ -355,7 +355,7 @@ class Preprocessor:
 
         all_segments = []
         
-        for segment_indexes, label in segment_informations:
+        for segment_indexes, label in tqdm(segment_informations, desc="load segments"):
             if label in self.config["drop_labels"]:
                 continue
             
@@ -455,6 +455,7 @@ class Preprocessor:
             for _ , label in segment_informations:
                 if label in self.config["drop_labels"]:
                     continue
+                
                 dataset_size += 1
 
         return dataset_size
@@ -482,6 +483,7 @@ class Preprocessor:
 
         filenames = self.get_file_names(data_directory)
         approximate_dataset_size = self._get_approximate_dataset_size(filenames)
+        print(f"Approximate dataset size: {approximate_dataset_size}")
 
         def preprocess_func(file_name):
             file_name_str = file_name.numpy().decode("utf-8")
@@ -514,7 +516,7 @@ class Preprocessor:
 
         # Set sizes for train, validation, and test datasets
         train_size = int(float(self.config["train_size"]) * approximate_dataset_size)
-        val_size = int(float(self.config["val_size"]) * train_size)
+        val_size = int(float(self.config["val_size"]) * approximate_dataset_size)
 
         train_dataset = dataset.take(train_size)
         remaining = dataset.skip(train_size)
@@ -547,12 +549,12 @@ def main():
         test_count += 1
     print(train_count, val_count, test_count)
 
-    for data, label in train_dataset.as_numpy_iterator():
-        print(f"Shape: {data.shape}, Label: {label}")
+    # for data, label in train_dataset.as_numpy_iterator():
+    #     print(f"Shape: {data.shape}, Label: {label}")
 
-        # Determine the number of time series to plot
-        num_ts = data[0].shape[
-            0]  # Number of time series in the first element of the batch
+    #     # Determine the number of time series to plot
+    #     num_ts = data[0].shape[
+    #         0]  # Number of time series in the first element of the batch
 
         # Create a figure and a set of subplots
         # fig, axs = plt.subplots(num_ts, 1, figsize=(16, 8))  # Adjust the figure size as needed

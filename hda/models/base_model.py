@@ -92,7 +92,7 @@ class WandbKerasModel(WandbManager):
 
         # Prepare callbacks for fitting, including WandbCallback
         callbacks = fit_args.get("callbacks", [])
-        callbacks.append(WandbCallback())
+        callbacks.append(WandbCallback(save_model=False))
         fit_args["callbacks"] = callbacks
 
         # Compile the model

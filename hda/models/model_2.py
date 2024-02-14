@@ -159,9 +159,9 @@ def main():
         },
         fit_args={
             "x": train_dataset,
-            "epochs": 3,
+            "epochs": 11,
             "validation_data": val_dataset,
-            "experiment_name": "LSTM_with_weight_tanh",
+            "experiment_name": "LSTM_with_weight_tanh_full_dataset",
             "class_weight": class_weight_dict,
         },
     )
