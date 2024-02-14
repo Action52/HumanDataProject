@@ -71,6 +71,39 @@ class TimeSeriesModelSimple(tf.keras.Model):
         x = self.dense(x)
         return x
 
+
+class TimeSeriesModelGRU(tf.keras.Model):
+    def __init__(self, num_versions, time_steps, diodes, num_classes, convolutions_conf, dense_conf, gru_conf, **kwargs):
+        super(TimeSeriesModelGRU, self).__init__(**kwargs)
+        self.multi_version_conv = WindowsConvolutionLayer(diodes, convolutions_conf)
+        self.gru_layer = GRU(**gru_conf)
+        self.dense = DenseLayer(dense_conf)
+
+    def call(self, inputs):
+        x = self.multi_version_conv(inputs)
+        # We need to merge the versions and diodes dimensions and treat it as the features dimension for the GRU
+        x = tf.reshape(x, shape=(-1, x.shape[2], x.shape[1] * x.shape[3] * x.shape[4]))
+        x = self.gru_layer(x)
+        x = self.dense(x)
+        return x
+
+
+class TimeSeriesModelVanillaRNN(tf.keras.Model):
+    def __init__(self, num_versions, time_steps, diodes, num_classes, convolutions_conf, dense_conf, rnn_conf, **kwargs):
+        super(TimeSeriesModelVanillaRNN, self).__init__(**kwargs)
+        self.multi_version_conv = WindowsConvolutionLayer(diodes, convolutions_conf)
+        self.rnn_layer = SimpleRNN(**rnn_conf)
+        self.dense = DenseLayer(dense_conf)
+
+    def call(self, inputs):
+        x = self.multi_version_conv(inputs)
+        # We need to merge the versions and diodes dimensions and treat it as the features dimension for the GRU
+        x = tf.reshape(x, shape=(-1, x.shape[2], x.shape[1] * x.shape[3] * x.shape[4]))
+        x = self.rnn_layer(x)
+        x = self.dense(x)
+        return x
+    
+    
 class TimeSeriesModelLSTM(tf.keras.Model):
     def __init__(self, num_versions, time_steps, diodes, num_classes, convolutions_conf, dense_conf, lstm_conf, **kwargs):
         super(TimeSeriesModelLSTM, self).__init__(**kwargs)

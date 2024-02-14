@@ -7,7 +7,6 @@ from matplotlib import pyplot as plt
 from sklearn.metrics import confusion_matrix
 from sklearn.utils.class_weight import compute_class_weight
 import seaborn as sns
-from hda.utils import SparsePrecision, SparseRecall
 from hda.models.base_model import WandbKerasModel
 
 
