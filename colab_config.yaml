@@ -1,0 +1,80 @@
+preprocess:
+  data_directory: '/content/'
+  test_directory: 'datasets/test/'
+  val_directory: 'datasets/validation'
+  cache_file: true
+  shuffle: true
+  seed: 100
+  batch_size: 20
+  is_normalized: true
+  train_size: 0.63
+  test_size: 0.10
+  val_size: 0.27
+  smoothing_windows:
+    - 20
+    - 75
+    - 200
+  downsamples:
+    - 2
+    - 4
+  drop_labels:
+    - 91
+    - 92
+    - 99
+    - 0
+  max_length_ts: 215
+  channels: 22
+
+results_path: 'results/'
+
+epochs: 20
+with_weights: false
+
+convolutions_conf:
+  conv1:
+    filters: 4
+    kernel_size: 5
+    activation: 'relu'
+    padding: 'same'
+  conv2:
+    filters: 4
+    kernel_size: 5
+    activation: 'relu'
+    padding: 'same'
+  conv3:
+    filters: 4
+    kernel_size: 5
+    activation: 'relu'
+    padding: 'same'
+
+dense_conf:
+  flatten_dropout:
+    dropout: 0.5
+  dense1:
+    units: 32
+    activation: relu
+  output:
+    units: 6
+    activation: softmax
+
+gru:
+  units: 128
+  return_sequences: true
+
+simple_rnn:
+  units: 128
+  return_sequences: true
+  activation: relu
+
+lstm:
+  units: 128
+  return_sequences: true
+  activation: tanh
+
+cfc:
+  units: 128
+  return_sequences: true
+
+wiring:
+  units: 128
+  output_size: 64
