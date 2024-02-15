@@ -87,12 +87,11 @@ class Preprocessor:
 
     def _normalize_data(self, data):
         """
-        Normalizes EEG data by scaling based on the 5th and 99th percentile values across each channel.
+        Normalizes EEG data using Z-score normalization for each channel.
 
-        This method enhances the robustness of the normalization by using percentile values, which are less
-        sensitive to extreme outliers compared to min-max normalization. The data is scaled such that the
-        range between the 5th and 99th percentiles is normalized to a standard range, improving the consistency
-        of EEG signal amplitudes across channels.
+        This method calculates the mean and standard deviation for each channel and scales the data such that
+        each channel has a mean of 0 and a standard deviation of 1. This normalization is useful for making the
+        data more comparable across channels and subjects by standardizing the distribution of the EEG signals.
 
         Args:
             data (np.ndarray): The EEG data to be normalized, typically with shape (timepoints, channels).
@@ -100,10 +99,14 @@ class Preprocessor:
         Returns:
             np.ndarray: The normalized EEG data, maintaining the original shape of the input.
         """
-        norm_factor = np.percentile(data, 99, axis=0) - np.percentile(
-            data, 5, axis=0
-        )
-        return data / norm_factor
+        # Calculate the mean and standard deviation for each channel
+        mean = np.mean(data, axis=0)
+        std = np.std(data, axis=0)
+        
+        # Apply Z-score normalization
+        normalized_data = (data - mean) / std
+        
+        return normalized_data
 
     def _downsample_data(self, segment, k):
         """
