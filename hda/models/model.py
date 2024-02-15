@@ -211,11 +211,11 @@ def main():
         fit_args['class_weight'] = class_weight_dict
         
     experiments = {
-        #"Simple": TimeSeriesModelSimple(diodes, config['convolutions_conf'], config['dense_conf']),
-        #"GRU": TimeSeriesModelGRU(diodes, config['convolutions_conf'], config['dense_conf'], gru_conf=config['gru']),
-        #"VanillaRNN": TimeSeriesModelVanillaRNN(diodes, config['convolutions_conf'], config['dense_conf'], rnn_conf=config['simple_rnn']),
-        #"LSTM": TimeSeriesModelLSTM(diodes, config['convolutions_conf'], config['dense_conf'], lstm_conf=config['lstm']),
-        #"CFC": TimeSeriesModelCfC(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc']),
+        "Simple": TimeSeriesModelSimple(diodes, config['convolutions_conf'], config['dense_conf']),
+        "GRU": TimeSeriesModelGRU(diodes, config['convolutions_conf'], config['dense_conf'], gru_conf=config['gru']),
+        "VanillaRNN": TimeSeriesModelVanillaRNN(diodes, config['convolutions_conf'], config['dense_conf'], rnn_conf=config['simple_rnn']),
+        "LSTM": TimeSeriesModelLSTM(diodes, config['convolutions_conf'], config['dense_conf'], lstm_conf=config['lstm']),
+        "CFC": TimeSeriesModelCfC(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc']),
         "CFCWithNCP": TimeSeriesModelCfCWithNCP(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc'], wiring_conf=config['wiring'])
     }
     
