@@ -14,9 +14,9 @@ from hda.utils import load_config, get_dataset_shape, predict_and_plot
 import numpy as np
 
 
-class SimpleWindowsConvolutionLayer(Layer):
+class WindowsConvolutionLayer(Layer):
     def __init__(self, num_diodes, convolutions_conf, **kwargs):
-        super(SimpleWindowsConvolutionLayer, self).__init__(**kwargs)
+        super(WindowsConvolutionLayer, self).__init__(**kwargs)
         self.num_diodes = num_diodes  # Number of diodes/channels
         self.conv_blocks = [
             [Conv1D(**conv_conf) for _, conv_conf in convolutions_conf.items()]
@@ -38,9 +38,9 @@ class SimpleWindowsConvolutionLayer(Layer):
         return combined
 
 
-class WindowsConvolutionLayer(Layer):
+class WindowsConvolutionLayerMaxPool(Layer):
     def __init__(self, num_diodes, convolutions_conf, **kwargs):
-        super(WindowsConvolutionLayer, self).__init__(**kwargs)
+        super(WindowsConvolutionLayerMaxPool, self).__init__(**kwargs)
         self.num_diodes = num_diodes  # Number of diodes/channels
         self.conv_blocks = [
             [Conv1D(**conv_conf) for _, conv_conf in convolutions_conf.items()]
@@ -211,23 +211,23 @@ def main():
         fit_args['class_weight'] = class_weight_dict
         
     experiments = {
-        "simple": TimeSeriesModelSimple(diodes, config['convolutions_conf'], config['dense_conf']),
-        "gru": TimeSeriesModelGRU(diodes, config['convolutions_conf'], config['dense_conf'], gru_conf=config['gru']),
-        "vanilla_rnn": TimeSeriesModelVanillaRNN(diodes, config['convolutions_conf'], config['dense_conf'], rnn_conf=config['simple_rnn']),
-        "lstm": TimeSeriesModelLSTM(diodes, config['convolutions_conf'], config['dense_conf'], lstm_conf=config['lstm']),
-        "cfc": TimeSeriesModelCfC(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc']),
-        "cfc_ncp": TimeSeriesModelCfCWithNCP(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc'], wiring_conf=config['wiring'])
+        #"Simple": TimeSeriesModelSimple(diodes, config['convolutions_conf'], config['dense_conf']),
+        #"GRU": TimeSeriesModelGRU(diodes, config['convolutions_conf'], config['dense_conf'], gru_conf=config['gru']),
+        #"VanillaRNN": TimeSeriesModelVanillaRNN(diodes, config['convolutions_conf'], config['dense_conf'], rnn_conf=config['simple_rnn']),
+        #"LSTM": TimeSeriesModelLSTM(diodes, config['convolutions_conf'], config['dense_conf'], lstm_conf=config['lstm']),
+        #"CFC": TimeSeriesModelCfC(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc']),
+        "CFCWithNCP": TimeSeriesModelCfCWithNCP(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc'], wiring_conf=config['wiring'])
     }
     
     for name, model in experiments.items():
-        fit_args["experiment_name"] = f"{name}_without_weights_tanh"
+        fit_args["experiment_name"] = f"{name}"
         
         # Instantiate the model
         model.build(input_shape=(batch_size, versions, time_steps, diodes))
 
         # Wrap the model with WandbKerasModel
         wandb_model = WandbKerasModel(
-            model=model, project_name="hda-luis-test-new", config={}, entity="bdma"
+            model=model, project_name="hda-luis-test-new-ncp", config={}, entity="bdma"
         )
         # Model summary to check the architecture
         wandb_model.model.summary()
@@ -245,7 +245,7 @@ def main():
 
         # Evaluate the model on the test set and print the confusion matrix
         predict_and_plot(wandb_model, test_dataset, config,
-                         title=f"{name}_without_weights_tanh")
+                         title=f"{name}")
         
     wandb_model.finish_experiment()
 

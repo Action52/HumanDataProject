@@ -102,7 +102,7 @@ class WandbKerasModel(WandbManager):
 
         # Save the model locally
         model_dir = "saved_model"
-        self.model.save(model_dir)
+        self.model.save_weights(model_dir)
 
         # Create a W&B artifact for the model
         artifact = wandb.Artifact(name=f"{experiment_name}_model", type="model")

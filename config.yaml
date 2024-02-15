@@ -33,19 +33,16 @@ with_weights: false
 convolutions_conf:
   conv1:
     filters: 4
-    kernel_size: 5
+    kernel_size: 10
     activation: 'relu'
-    padding: 'same'
   conv2:
     filters: 4
-    kernel_size: 5
+    kernel_size: 10
     activation: 'relu'
-    padding: 'same'
   conv3:
     filters: 4
-    kernel_size: 5
+    kernel_size: 10
     activation: 'relu'
-    padding: 'same'
 
 dense_conf:
   flatten_dropout:
@@ -77,4 +74,4 @@ cfc:
 
 wiring:
   units: 128
-  output_size: 64
+  output_size: 48
