@@ -244,7 +244,8 @@ def main():
         )
 
         # Evaluate the model on the test set and print the confusion matrix
-        predict_and_plot(wandb_model, test_dataset, config)
+        predict_and_plot(wandb_model, test_dataset, config,
+                         title=f"{name}_without_weights_tanh")
         
     wandb_model.finish_experiment()
 

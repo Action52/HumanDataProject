@@ -1,11 +1,17 @@
+import os
+import time
+
 import matplotlib.pyplot as plt
+import pandas as pd
 import yaml
 import numpy as np
 import seaborn as sns
 
 from matplotlib.colors import Normalize
 from hda.constants import LABELS_WITHOUT_ZERO, LABELS_WITH_ZERO, ZERO
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, accuracy_score, f1_score, \
+    precision_score, recall_score
+
 
 def load_config(config_path):
     with open(config_path, 'r') as config_file:
@@ -115,29 +121,51 @@ def get_labels_to_classes(drop_labels):
     """
     return list(LABELS_WITHOUT_ZERO.values()) if ZERO in drop_labels else list(LABELS_WITH_ZERO.values())
 
-def predict_and_plot(wandb_model, test_dataset, config):
+def predict_and_plot(wandb_model, test_dataset, config, title=""):
     y_true = []
     y_pred = []
+    total_time = 0
+    num_samples = 0
 
-    # Assuming your test_dataset yields (features, labels)
     for features, labels in test_dataset:
+        start_time = time.time()
         preds = wandb_model.model.predict(features)
+        end_time = time.time()
+        total_time += (end_time - start_time)
+        num_samples += features.shape[0]
+
         y_true.extend(labels.numpy().flatten())
         y_pred.extend(np.argmax(preds, axis=-1).flatten())
 
-    y_true = map_labels_to_classes(y_true, config['preprocess']['drop_labels'])
-    y_pred = map_labels_to_classes(y_pred, config['preprocess']['drop_labels'])
-    labels = get_labels_to_classes(config['preprocess']['drop_labels'])
+    avg_prediction_time = total_time / num_samples
 
-    cm = confusion_matrix(y_true, y_pred, labels=labels)
-    print(cm)
+    # Compute metrics
+    accuracy = accuracy_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred, average='weighted')
+    precision = precision_score(y_true, y_pred, average='weighted')
+    recall = recall_score(y_true, y_pred, average='weighted')
 
-    # Modified code to plot the confusion matrix with mapped labels
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=labels, yticklabels=labels)
-    plt.xlabel('Predicted Label')
-    plt.ylabel('True Label')
-    plt.title('Confusion Matrix')
-    plt.xticks(rotation=45)  
-    plt.yticks(rotation=45)  
-    plt.show()
+    # Calculate the number of parameters
+    num_params = wandb_model.model.count_params()
+
+    # Calculate model size in MB
+    model_path = f"{config['results_path']}{title}_weights.h5"
+    wandb_model.model.save_weights(model_path)
+    model_size = os.path.getsize(model_path) / 1e6  # Convert from bytes to MB
+    os.remove(model_path)  # Clean up
+
+    # Save metrics to CSV
+    metrics = {
+        'Metric': ['Average Prediction Time (s/sample)', 'Test Accuracy', 'Test F1-score', 'Test Precision', 'Test Recall', 'Number of Parameters', 'Model Weights (MB)'],
+        'Value': [round(avg_prediction_time, 3), round(accuracy, 3), round(f1, 3), round(precision, 3), round(recall, 3), round(num_params, 3), round(model_size, 3)]
+    }
+
+    test_metrics = {k: v for k, v in zip(metrics['Metric'], metrics['Value'])}
+
+    wandb_model.log_metrics(test_metrics)
+
+    df_metrics = pd.DataFrame(metrics)
+    print(df_metrics)
+
+    df_metrics.to_csv(f"{config['results_path']}{title}_metrics.csv", index=False)
+    print(f"Metrics saved to {config['results_path']}{title}_metrics.csv")

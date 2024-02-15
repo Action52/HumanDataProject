@@ -4,6 +4,7 @@ preprocess:
   val_directory: 'datasets/validation'
   cache_file: true
   shuffle: true
+  seed: 100
   batch_size: 20
   is_normalized: true
   train_size: 0.63
@@ -23,6 +24,8 @@ preprocess:
     - 0
   max_length_ts: 215
   channels: 22
+
+results_path: 'results/'
 
 epochs: 5
 with_weights: false
