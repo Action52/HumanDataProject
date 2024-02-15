@@ -169,3 +169,15 @@ def predict_and_plot(wandb_model, test_dataset, config, title=""):
 
     df_metrics.to_csv(f"{config['results_path']}{title}_metrics.csv", index=False)
     print(f"Metrics saved to {config['results_path']}{title}_metrics.csv")
+
+    # Plotting the confusion matrix
+    cm = confusion_matrix(y_true, y_pred)
+
+    wandb_model.log_metrics({"test_confusion_matrix": cm})
+
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    plt.title(f'{title} Confusion Matrix')
+    plt.show()
