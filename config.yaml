@@ -24,7 +24,7 @@ preprocess:
   max_length_ts: 215
   channels: 22
 
-epochs: 20
+epochs: 5
 with_weights: false
 
 convolutions_conf:
@@ -32,20 +32,23 @@ convolutions_conf:
     filters: 4
     kernel_size: 5
     activation: 'relu'
+    padding: 'same'
   conv2:
     filters: 4
     kernel_size: 5
     activation: 'relu'
+    padding: 'same'
   conv3:
     filters: 4
     kernel_size: 5
     activation: 'relu'
+    padding: 'same'
 
 dense_conf:
   flatten_dropout:
     dropout: 0.5
   dense1:
-    units: 64
+    units: 32
     activation: relu
   output:
     units: 6
@@ -64,3 +67,11 @@ lstm:
   units: 128
   return_sequences: true
   activation: tanh
+
+cfc:
+  units: 128
+  return_sequences: true
+
+wiring:
+  units: 128
+  output_size: 64
