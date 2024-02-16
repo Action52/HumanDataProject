@@ -294,6 +294,7 @@ class Preprocessor:
             tuple: A tuple containing the original (and possibly normalized) data and a list of its smoothed versions.
         """
         data = mat_data["o"]["data"][0][0]
+        data = np.delete(data, 21, axis=1)
         smoothened_data = []
 
         if is_normalized:

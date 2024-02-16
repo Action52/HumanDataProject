@@ -216,9 +216,9 @@ def main():
         #"Simple": TimeSeriesModelSimple(diodes, config['convolutions_conf'], config['dense_conf']),
         #"GRU": TimeSeriesModelGRU(diodes, config['convolutions_conf'], config['dense_conf'], gru_conf=config['gru']),
         #"VanillaRNN": TimeSeriesModelVanillaRNN(diodes, config['convolutions_conf'], config['dense_conf'], rnn_conf=config['simple_rnn']),
-        #"LSTM": TimeSeriesModelLSTM(diodes, config['convolutions_conf'], config['dense_conf'], lstm_conf=config['lstm']),
+        "LSTM": TimeSeriesModelLSTM(diodes, config['convolutions_conf'], config['dense_conf'], lstm_conf=config['lstm'])
         #"CFC": TimeSeriesModelCfC(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc']),
-        "CFCWithNCP": TimeSeriesModelCfCWithNCP(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc'], wiring_conf=config['wiring']),
+        # "CFCWithNCP": TimeSeriesModelCfCWithNCP(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc'], wiring_conf=config['wiring']),
     }
     
     for name, model in experiments.items():
@@ -229,7 +229,7 @@ def main():
 
         # Wrap the model with WandbKerasModel
         wandb_model = WandbKerasModel(
-            model=model, project_name="hda-luis-test-ncp", config={}, entity="bdma"
+            model=model, project_name="hda-sat", config={}, entity="bdma"
         )
         # Model summary to check the architecture
         wandb_model.model.summary()

@@ -24,7 +24,7 @@ preprocess:
     - 99
     - 0
   max_length_ts: 215
-  channels: 22
+  channels: 21
 
 results_path: 'results/'
 
