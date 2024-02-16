@@ -101,12 +101,17 @@ class WandbKerasModel(WandbManager):
         history = self.model.fit(**(fit_args or {}))
 
         # Save the model locally
-        model_dir = "saved_model"
+        model_dir = "saved_model/"
         self.model.save_weights(model_dir)
 
-        # Create a W&B artifact for the model
-        artifact = wandb.Artifact(name=f"{experiment_name}_model", type="model")
-        artifact.add_dir(model_dir)
+        # Save the model weights locally
+        weights_file = f"{experiment_name}_weights.h5"
+        self.model.save_weights(f"{model_dir}{weights_file}")
+
+        # Create a W&B artifact for the model weights
+        artifact = wandb.Artifact(name=f"{experiment_name}_weights",
+                                  type="model-weights")
+        artifact.add_file(f"{model_dir}{weights_file}")
 
         # Add the config.yaml file to the artifact
         artifact.add_file(config_path)

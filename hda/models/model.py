@@ -178,17 +178,15 @@ class TimeSeriesModelCfCWithNCP(tf.keras.Model):
         self.wiring = AutoNCP(**wiring_conf)
         if 'units' in cfc_conf:
             del cfc_conf['units']
-        self.batch_norm = BatchNormalization()
-        self.batch_norm_2 = BatchNormalization()
         self.cfc_layer = CfC(self.wiring, **cfc_conf)
+        self.batch_norm = BatchNormalization()
         self.dense = DenseLayer(dense_conf)
 
     def call(self, inputs):
         x = self.multi_version_conv(inputs)
         x = tf.reshape(x, shape=(-1, x.shape[2], x.shape[1] * x.shape[3] * x.shape[4]))
-        x = self.batch_norm(x)
         x = self.cfc_layer(x)
-        x = self.batch_norm_2(x)
+        x = self.batch_norm(x)
         x = self.dense(x)
         return x
 
