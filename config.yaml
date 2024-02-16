@@ -27,7 +27,7 @@ preprocess:
 
 results_path: 'results/'
 
-epochs: 20
+epochs: 5
 with_weights: false
 
 convolutions_conf:

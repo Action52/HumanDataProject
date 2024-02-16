@@ -515,7 +515,7 @@ class Preprocessor:
             dataset = dataset.cache(f'{self.mode}_dataset_cache')
 
         if self.config["shuffle"]:
-            dataset = dataset.shuffle(buffer_size=approximate_dataset_size, seed=self.config['seed'])
+            dataset = dataset.shuffle(buffer_size=approximate_dataset_size + 1, seed=self.config['seed'])
 
         # Set sizes for train, validation, and test datasets
         train_size = int(float(self.config["train_size"]) * approximate_dataset_size)
