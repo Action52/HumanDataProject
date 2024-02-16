@@ -76,3 +76,4 @@ wiring:
   units: 128
   output_size: 48
   seed: 100
+  sparcity_level: 0.75
