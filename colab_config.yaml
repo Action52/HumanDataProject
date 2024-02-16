@@ -1,5 +1,6 @@
 preprocess:
   data_directory: '/content/'
+  demo_directory: 'datasets/'
   test_directory: 'datasets/test/'
   val_directory: 'datasets/validation'
   cache_file: true
