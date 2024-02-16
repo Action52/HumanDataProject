@@ -2,7 +2,7 @@
 
 import tensorflow as tf
 
-from keras.layers import Layer, Flatten, Conv1D, Dense, Lambda,  Dropout, GRU, SimpleRNN, LSTM, Reshape, MaxPooling1D
+from keras.layers import Layer, Flatten, Conv1D, Dense, Lambda,  Dropout, GRU, SimpleRNN, LSTM, Reshape, MaxPooling1D, TimeDistributed, Activation, BatchNormalization
 from ncps.tf import LTC, CfC
 from ncps.wirings import NCP, AutoNCP
 from sklearn.utils.class_weight import compute_class_weight
@@ -178,13 +178,17 @@ class TimeSeriesModelCfCWithNCP(tf.keras.Model):
         self.wiring = AutoNCP(**wiring_conf)
         if 'units' in cfc_conf:
             del cfc_conf['units']
+        self.batch_norm = BatchNormalization()
+        self.batch_norm_2 = BatchNormalization()
         self.cfc_layer = CfC(self.wiring, **cfc_conf)
         self.dense = DenseLayer(dense_conf)
 
     def call(self, inputs):
         x = self.multi_version_conv(inputs)
         x = tf.reshape(x, shape=(-1, x.shape[2], x.shape[1] * x.shape[3] * x.shape[4]))
+        x = self.batch_norm(x)
         x = self.cfc_layer(x)
+        x = self.batch_norm_2(x)
         x = self.dense(x)
         return x
 
@@ -211,12 +215,12 @@ def main():
         fit_args['class_weight'] = class_weight_dict
         
     experiments = {
-        "Simple": TimeSeriesModelSimple(diodes, config['convolutions_conf'], config['dense_conf']),
-        "GRU": TimeSeriesModelGRU(diodes, config['convolutions_conf'], config['dense_conf'], gru_conf=config['gru']),
-        "VanillaRNN": TimeSeriesModelVanillaRNN(diodes, config['convolutions_conf'], config['dense_conf'], rnn_conf=config['simple_rnn']),
-        "LSTM": TimeSeriesModelLSTM(diodes, config['convolutions_conf'], config['dense_conf'], lstm_conf=config['lstm']),
-        "CFC": TimeSeriesModelCfC(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc']),
-        "CFCWithNCP": TimeSeriesModelCfCWithNCP(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc'], wiring_conf=config['wiring'])
+        #"Simple": TimeSeriesModelSimple(diodes, config['convolutions_conf'], config['dense_conf']),
+        #"GRU": TimeSeriesModelGRU(diodes, config['convolutions_conf'], config['dense_conf'], gru_conf=config['gru']),
+        #"VanillaRNN": TimeSeriesModelVanillaRNN(diodes, config['convolutions_conf'], config['dense_conf'], rnn_conf=config['simple_rnn']),
+        #"LSTM": TimeSeriesModelLSTM(diodes, config['convolutions_conf'], config['dense_conf'], lstm_conf=config['lstm']),
+        #"CFC": TimeSeriesModelCfC(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc']),
+        "CFCWithNCP": TimeSeriesModelCfCWithNCP(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc'], wiring_conf=config['wiring']),
     }
     
     for name, model in experiments.items():
@@ -227,7 +231,7 @@ def main():
 
         # Wrap the model with WandbKerasModel
         wandb_model = WandbKerasModel(
-            model=model, project_name="hda-luis-test-new-ncp", config={}, entity="bdma"
+            model=model, project_name="hda-luis-test-ncp", config={}, entity="bdma"
         )
         # Model summary to check the architecture
         wandb_model.model.summary()

@@ -5,7 +5,7 @@ preprocess:
   cache_file: true
   shuffle: true
   seed: 100
-  batch_size: 20
+  batch_size: 200
   is_normalized: true
   train_size: 0.63
   test_size: 0.10
@@ -75,3 +75,4 @@ cfc:
 wiring:
   units: 128
   output_size: 48
+  seed: 100
