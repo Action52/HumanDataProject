@@ -6,7 +6,7 @@ preprocess:
   cache_file: true
   shuffle: true
   seed: 100
-  batch_size: 500
+  batch_size: 550
   is_normalized: true
   train_size: 0.63
   test_size: 0.10
