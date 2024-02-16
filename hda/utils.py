@@ -8,6 +8,7 @@ import numpy as np
 import seaborn as sns
 
 from matplotlib.colors import Normalize
+from hda.models.base_model import WandbKerasModel
 from hda.constants import LABELS_WITHOUT_ZERO, LABELS_WITH_ZERO, ZERO
 from sklearn.metrics import confusion_matrix, accuracy_score, f1_score, \
     precision_score, recall_score

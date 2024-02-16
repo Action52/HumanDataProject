@@ -33,6 +33,8 @@ class Preprocessor:
             self.config['data_directory'] = self.config['val_directory']
         if mode == 'test':
             self.config['data_directory'] = self.config['test_directory']
+        if mode == 'demo':
+            self.config['data_directory'] = 'datasets/'
 
         self.total_segments = 0
 
