@@ -2,9 +2,9 @@
 
 import tensorflow as tf
 
-from keras.layers import Layer, Flatten, Conv1D, Dense, Lambda,  Dropout, GRU, SimpleRNN, LSTM, Reshape, MaxPooling1D, TimeDistributed, Activation, BatchNormalization
-from ncps.tf import LTC, CfC
-from ncps.wirings import NCP, AutoNCP
+from keras.layers import Layer, Flatten, Conv1D, Dense, Lambda,  Dropout, GRU, SimpleRNN, LSTM, MaxPooling1D, BatchNormalization
+from ncps.tf import CfC
+from ncps.wirings import AutoNCP
 from sklearn.utils.class_weight import compute_class_weight
 from hda.models.base_model import WandbKerasModel
 
@@ -34,7 +34,7 @@ class WindowsConvolutionLayer(Layer):
             diode_slice = Lambda(lambda x: tf.expand_dims(x, -2))(diode_slice)  # Shape: (20, 6, 207, 1, 4)
             conv_outputs.append(diode_slice)
         # Stack along the new dimension to keep diodes and their feature maps separate
-        combined = Lambda(lambda x: tf.concat(x, axis=-2))(conv_outputs)  # Shape: (20, 6, 207, 22, 4)
+        combined = Lambda(lambda x: tf.concat(x, axis=-2))(conv_outputs)  # Shape: (20, 6, 207, 21, 4)
         return combined
 
 
@@ -72,7 +72,6 @@ class WindowsConvolutionLayerMaxPool(Layer):
 
         # Stack along the new dimension to keep diodes and their feature maps separate
         combined = Lambda(lambda x: tf.concat(x, axis=-2))(conv_outputs)  # Shape: (batch_size, versions, steps, num_diodes, features)
-        #print(combined.shape)
         return combined
 
 class DenseLayer(Layer):
@@ -134,7 +133,6 @@ class TimeSeriesModelVanillaRNN(tf.keras.Model):
 
     def call(self, inputs):
         x = self.multi_version_conv(inputs)
-        # We need to merge the versions and diodes dimensions and treat it as the features dimension for the GRU
         x = tf.reshape(x, shape=(-1, x.shape[2], x.shape[1] * x.shape[3] * x.shape[4]))
         x = self.rnn_layer(x)
         x = self.dense(x)
@@ -213,12 +211,7 @@ def main():
         fit_args['class_weight'] = class_weight_dict
         
     experiments = {
-        #"Simple": TimeSeriesModelSimple(diodes, config['convolutions_conf'], config['dense_conf']),
-        #"GRU": TimeSeriesModelGRU(diodes, config['convolutions_conf'], config['dense_conf'], gru_conf=config['gru']),
-        #"VanillaRNN": TimeSeriesModelVanillaRNN(diodes, config['convolutions_conf'], config['dense_conf'], rnn_conf=config['simple_rnn']),
         "LSTM": TimeSeriesModelLSTM(diodes, config['convolutions_conf'], config['dense_conf'], lstm_conf=config['lstm'])
-        #"CFC": TimeSeriesModelCfC(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc']),
-        # "CFCWithNCP": TimeSeriesModelCfCWithNCP(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc'], wiring_conf=config['wiring']),
     }
     
     for name, model in experiments.items():

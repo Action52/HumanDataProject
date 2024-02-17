@@ -6,8 +6,6 @@ import tensorflow as tf
 import yaml
 from tqdm import tqdm
 
-import matplotlib.pyplot as plt
-
 from hda.utils import get_dataset_shape
 from hda.constants import BIG_SEGMENTS, CLASS_MAPPER, SEGMENT_PADDING, ZERO
 
@@ -74,7 +72,7 @@ class Preprocessor:
         pad_size = window_size // 2
         smoothed_eeg_data = np.empty_like(eeg_data)
 
-        for i in range(eeg_data.shape[1]):  # tqdm(range(eeg_data.shape[1]), desc="smoothen eeg"):
+        for i in range(eeg_data.shape[1]):
             padded_channel = np.pad(eeg_data[:, i], pad_size, mode="edge")
             smoothed_channel = np.convolve(
                 padded_channel, np.ones(window_size) / window_size, mode="same"
@@ -157,7 +155,7 @@ class Preprocessor:
         segments_by_labels = []
         start = end = 0
 
-        for i in range(len(marker)):  # tqdm(range(len(marker)), desc="process the marker"):
+        for i in range(len(marker)):
             if i < len(marker) - 1 and marker[i] == marker[i + 1]:
                 end += 1
                 continue
@@ -294,7 +292,7 @@ class Preprocessor:
             tuple: A tuple containing the original (and possibly normalized) data and a list of its smoothed versions.
         """
         data = mat_data["o"]["data"][0][0]
-        data = np.delete(data, 21, axis=1)
+        data = np.delete(data, 21, axis=1) # Remove unused 22nd channel
         smoothened_data = []
 
         if is_normalized:
@@ -375,7 +373,7 @@ class Preprocessor:
                 segment_indexes,
                 self.config["downsamples"],
             )
-            stacked_segment = np.stack(segment, axis=0)  # Shape: (6, 200, 22)
+            stacked_segment = np.stack(segment, axis=0)  # Shape: (6, 200, 21)
             all_segments.append((stacked_segment, label))
             self.total_segments += 1
         return all_segments

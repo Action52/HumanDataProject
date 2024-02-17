@@ -9,19 +9,21 @@ from hda.utils import get_dataset_shape, load_config, predict_and_plot
 
 parser = argparse.ArgumentParser(description="Process model name.")
 
+# Add the arguments to the parser
 parser.add_argument("--model", type=str, help="The name of the model", required=True)
 parser.add_argument("--version", type=str, help="The name of the model", required=True)
+
 # Parse the arguments
 args = parser.parse_args()
 
 def main():
     model_name = args.model
     versions = args.version
-    if model_name not in ["Simple", "GRU", "VanillaRNN", "LSTM", "CFC", "CFCWithNCP"]:
+    if model_name not in ["Simple", "GRU", "VanillaRNN", "LSTM", "CfC", "CfCWithNCP"]:
         raise ValueError(f"Unknown model name: {model_name}")
     
     # Initialize artifact variables
-    artifact_name = f'bdma/hda-big-2/{model_name}_weights:{versions}'
+    artifact_name = f'bdma/hda-big-3/{model_name}_weights:{versions}'
     artifact_type = 'model-weights'
     config_path = '/colab_config.yaml' 
     model_weights_path = f'/{model_name}_weights.h5'
@@ -47,8 +49,8 @@ def main():
         "GRU": TimeSeriesModelGRU(diodes, config['convolutions_conf'], config['dense_conf'], gru_conf=config['gru']),
         "VanillaRNN": TimeSeriesModelVanillaRNN(diodes, config['convolutions_conf'], config['dense_conf'], rnn_conf=config['simple_rnn']),
         "LSTM": TimeSeriesModelLSTM(diodes, config['convolutions_conf'], config['dense_conf'], lstm_conf=config['lstm']),
-        "CFC": TimeSeriesModelCfC(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc']),
-        "CFCWithNCP": TimeSeriesModelCfCWithNCP(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc'], wiring_conf=config['wiring']),
+        "CfC": TimeSeriesModelCfC(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc']),
+        "CfCWithNCP": TimeSeriesModelCfCWithNCP(diodes, config['convolutions_conf'], config['dense_conf'], cfc_conf=config['cfc'], wiring_conf=config['wiring']),
     }
     
     # Initialize wandb model and predict
