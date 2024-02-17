@@ -22,6 +22,13 @@ To dive into our project, clone this repository using:
 
 `git clone https://github.com/your-username/HumanDataProject.git`
 
+## Run the Demo
+To run the demo, please run:
+
+`python hda/demo.py --model {model_name} --version {version}`
+
+With the model_name and version from the wandb experiments
+
 ## License
 
 This project is open source and available under the [MIT License](LICENSE).
