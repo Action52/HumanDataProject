@@ -27,7 +27,7 @@ To run the demo, please run:
 
 `python hda/demo.py --model {model_name} --version {version}`
 
-With the model_name and version from the wandb experiments
+with the model_name and version from the wandb experiments
 
 ## License
 
