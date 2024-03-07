@@ -5,6 +5,9 @@ Welcome to the GitHub repository for our final project in the Human Data Analyti
 # To evaluate the models results from W&B, please visit:
 https://wandb.ai/bdma/hda-big-3
 
+# The full report can be reviewed in:
+<a href="https://github.com/Action52/HumanDataProject/blob/main/report/report_final.pdf">Report PDF</a>
+
 ## Overview
 
 The objective of this study is to scrutinize the electromagnetic responses elicited by different cerebral regions when exposed to specific stimuli. We aim to develop efficient algorithms capable of handling the high dimensionality and computational demands typical of EEG data processing.
